@@ -1,0 +1,22 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPath": "/api/v1/fraud-analysis"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "customerId": "{{jsonPath request.body '$.customerId'}}",
+      "riskLevel": "{{#if (jsonPath request.body '$.amount' as-number lt 1000)}}LOW{{else if (jsonPath request.body '$.amount' as-number lt 5000)}}MEDIUM{{else if (jsonPath request.body '$.amount' as-number lt 10000)}}HIGH{{else}}BLOCKED{{/if}}",
+      "reason": "{{#if (jsonPath request.body '$.amount' as-number lt 1000)}}Baixo valor, risco mínimo{{else if (jsonPath request.body '$.amount' as-number lt 5000)}}Valor médio, análise padrão{{else if (jsonPath request.body '$.amount' as-number lt 10000)}}Alto valor, requer análise{{else}}Valor muito alto, bloqueado{{/if}}",
+      "riskScore": "{{#if (jsonPath request.body '$.amount' as-number lt 1000)}}0.2{{else if (jsonPath request.body '$.amount' as-number lt 5000)}}0.5{{else if (jsonPath request.body '$.amount' as-number lt 10000)}}0.8{{else}}0.95{{/if}}",
+      "analysisDate": "{{now}}",
+      "analysisId": "{{randomValue type='UUID'}}"
+    },
+    "transformers": ["response-template"]
+  }
+}
+
