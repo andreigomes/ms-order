@@ -105,6 +105,21 @@ public class Order {
         this.updatedAt = LocalDateTime.now();
     }
 
+    /**
+     * Atualiza o status do pedido (usado para análise de fraudes)
+     */
+    public void updateStatus(OrderStatus newStatus) {
+        Objects.requireNonNull(newStatus, "New status cannot be null");
+
+        // Validações de transição de status
+        if (this.status == OrderStatus.COMPLETED || this.status == OrderStatus.CANCELLED) {
+            throw new IllegalStateException("Cannot update status from " + this.status + " to " + newStatus);
+        }
+
+        this.status = newStatus;
+        this.updatedAt = LocalDateTime.now();
+    }
+
     // Getters
     public OrderId getId() { return id; }
     public CustomerId getCustomerId() { return customerId; }

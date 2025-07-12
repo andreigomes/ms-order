@@ -52,15 +52,20 @@ public class OrderEventPublisherAdapter implements OrderEventPublisherPort {
 
     @Override
     public void publishOrderRejected(Order order) {
+        publishOrderRejected(order, "Order rejected");
+    }
+
+    @Override
+    public void publishOrderRejected(Order order, String reason) {
         OrderEvent event = OrderEvent.orderRejected(
             order.getId().toString(),
             order.getCustomerId().toString(),
             order.getInsuranceType(),
             order.getAmount(),
-            order.getDescription()
+            reason
         );
         publishEvent(event);
-        logger.info("Published ORDER_REJECTED event for order: {}", order.getId());
+        logger.info("Published ORDER_REJECTED event for order: {} - Reason: {}", order.getId(), reason);
     }
 
     @Override
@@ -89,11 +94,25 @@ public class OrderEventPublisherAdapter implements OrderEventPublisherPort {
         logger.info("Published ORDER_COMPLETED event for order: {}", order.getId());
     }
 
+    @Override
+    public void publishOrderPendingAnalysis(Order order, String riskLevel) {
+        OrderEvent event = OrderEvent.orderPendingAnalysis(
+            order.getId().toString(),
+            order.getCustomerId().toString(),
+            order.getInsuranceType(),
+            order.getAmount(),
+            "Pending analysis - Risk level: " + riskLevel
+        );
+        publishEvent(event);
+        logger.info("Published ORDER_PENDING_ANALYSIS event for order: {} - Risk: {}", order.getId(), riskLevel);
+    }
+
     private void publishEvent(OrderEvent event) {
         try {
             kafkaTemplate.send(ORDER_TOPIC, event.orderId(), event);
+            logger.debug("Event published successfully: {}", event);
         } catch (Exception e) {
-            logger.error("Failed to publish event: {}", event, e);
+            logger.error("Error publishing event: {}", event, e);
             throw new RuntimeException("Failed to publish event", e);
         }
     }

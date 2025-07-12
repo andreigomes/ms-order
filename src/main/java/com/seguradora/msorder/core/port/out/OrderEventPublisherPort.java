@@ -13,7 +13,11 @@ public interface OrderEventPublisherPort {
 
     void publishOrderRejected(Order order);
 
+    void publishOrderRejected(Order order, String reason);
+
     void publishOrderCancelled(Order order);
 
     void publishOrderCompleted(Order order);
+
+    void publishOrderPendingAnalysis(Order order, String riskLevel);
 }

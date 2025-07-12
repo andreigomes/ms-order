@@ -49,4 +49,10 @@ public record OrderEvent(
         return new OrderEvent(orderId, customerId, insuranceType, OrderStatus.COMPLETED,
                              amount, description, LocalDateTime.now(), "ORDER_COMPLETED");
     }
+
+    public static OrderEvent orderPendingAnalysis(String orderId, String customerId, InsuranceType insuranceType,
+                                                 BigDecimal amount, String description) {
+        return new OrderEvent(orderId, customerId, insuranceType, OrderStatus.PENDING_ANALYSIS,
+                             amount, description, LocalDateTime.now(), "ORDER_PENDING_ANALYSIS");
+    }
 }
