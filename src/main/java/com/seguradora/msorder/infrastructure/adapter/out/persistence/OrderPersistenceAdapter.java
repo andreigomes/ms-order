@@ -1,3 +1,17 @@
+package com.seguradora.msorder.infrastructure.adapter.out.persistence;
+
+import com.seguradora.msorder.core.domain.entity.Order;
+import com.seguradora.msorder.core.domain.valueobject.CustomerId;
+import com.seguradora.msorder.core.domain.valueobject.OrderId;
+import com.seguradora.msorder.core.domain.valueobject.OrderStatus;
+import com.seguradora.msorder.core.port.out.OrderRepositoryPort;
+import com.seguradora.msorder.infrastructure.adapter.out.persistence.entity.OrderJpaEntity;
+import com.seguradora.msorder.infrastructure.adapter.out.persistence.mapper.OrderPersistenceMapper;
+import com.seguradora.msorder.infrastructure.adapter.out.persistence.repository.OrderJpaRepository;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.Optional;
 
 /**
  * Adaptador de persistência que implementa a porta de saída do repositório
@@ -60,17 +74,3 @@ public class OrderPersistenceAdapter implements OrderRepositoryPort {
         return jpaRepository.existsById(orderId.getValue());
     }
 }
-package com.seguradora.msorder.infrastructure.adapter.out.persistence;
-
-import com.seguradora.msorder.core.domain.entity.Order;
-import com.seguradora.msorder.core.domain.valueobject.CustomerId;
-import com.seguradora.msorder.core.domain.valueobject.OrderId;
-import com.seguradora.msorder.core.domain.valueobject.OrderStatus;
-import com.seguradora.msorder.core.port.out.OrderRepositoryPort;
-import com.seguradora.msorder.infrastructure.adapter.out.persistence.entity.OrderJpaEntity;
-import com.seguradora.msorder.infrastructure.adapter.out.persistence.mapper.OrderPersistenceMapper;
-import com.seguradora.msorder.infrastructure.adapter.out.persistence.repository.OrderJpaRepository;
-import org.springframework.stereotype.Component;
-
-import java.util.List;
-import java.util.Optional;
