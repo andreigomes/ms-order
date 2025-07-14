@@ -7,24 +7,22 @@ import com.seguradora.msorder.core.domain.valueobject.InsuranceType;
 import java.math.BigDecimal;
 
 /**
- * Port de entrada para criação de pedidos
+ * Caso de uso para criação de pedidos de seguro
  */
 public interface CreateOrderUseCase {
 
     /**
      * Cria um novo pedido de seguro
-     * @param command dados do pedido a ser criado
-     * @return pedido criado
      */
     Order createOrder(CreateOrderCommand command);
 
     /**
-     * Command object para criação de pedido
+     * Comando para criação de pedido
      */
     record CreateOrderCommand(
         CustomerId customerId,
-        InsuranceType insuranceType,
         BigDecimal amount,
+        InsuranceType insuranceType,
         String description
     ) {}
 }

@@ -1,11 +1,14 @@
 package com.seguradora.msorder.core.usecase.order;
 
 import com.seguradora.msorder.core.domain.entity.Order;
-import com.seguradora.msorder.core.domain.valueobject.OrderStatus;
+import com.seguradora.msorder.core.domain.service.InsuranceAmountValidator;
+import com.seguradora.msorder.core.domain.valueobject.*;
 import com.seguradora.msorder.core.port.in.CreateOrderUseCase;
-import com.seguradora.msorder.core.port.out.FraudAnalysisPort;
 import com.seguradora.msorder.core.port.out.OrderEventPublisherPort;
+import com.seguradora.msorder.core.port.out.FraudAnalysisPort;
 import com.seguradora.msorder.core.port.out.OrderRepositoryPort;
+import com.seguradora.msorder.infrastructure.adapter.out.external.dto.FraudAnalysisRequest;
+import com.seguradora.msorder.infrastructure.adapter.out.messaging.simulator.ExternalServicesSimulatorInterface;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -23,20 +26,26 @@ public class CreateOrderService implements CreateOrderUseCase {
     private final OrderRepositoryPort orderRepository;
     private final OrderEventPublisherPort eventPublisher;
     private final FraudAnalysisPort fraudAnalysisPort;
+    private final InsuranceAmountValidator amountValidator;
+    private final ExternalServicesSimulatorInterface externalServicesSimulator;
 
     public CreateOrderService(OrderRepositoryPort orderRepository,
                              OrderEventPublisherPort eventPublisher,
-                             FraudAnalysisPort fraudAnalysisPort) {
+                             FraudAnalysisPort fraudAnalysisPort,
+                             InsuranceAmountValidator amountValidator,
+                             ExternalServicesSimulatorInterface externalServicesSimulator) {
         this.orderRepository = orderRepository;
         this.eventPublisher = eventPublisher;
         this.fraudAnalysisPort = fraudAnalysisPort;
+        this.amountValidator = amountValidator;
+        this.externalServicesSimulator = externalServicesSimulator;
     }
 
     @Override
     public Order createOrder(CreateOrderCommand command) {
         logger.info("Iniciando criação de pedido para customer: {}", command.customerId());
 
-        // Criar o pedido usando factory method da entidade
+        // 1. Criar entidade Order com status inicial RECEIVED
         Order order = Order.create(
             command.customerId(),
             command.insuranceType(),
@@ -44,88 +53,95 @@ public class CreateOrderService implements CreateOrderUseCase {
             command.description()
         );
 
-        // Verificar se cliente está bloqueado
-        if (fraudAnalysisPort.isCustomerBlocked(command.customerId().getValue())) {
-            logger.warn("Cliente bloqueado detectado: {}", command.customerId());
-            order.updateStatus(OrderStatus.REJECTED);
-            Order savedOrder = orderRepository.save(order);
-            eventPublisher.publishOrderRejected(savedOrder, "Cliente bloqueado por fraude");
-            return savedOrder;
-        }
+        // 2. Persistir com status RECEIVED e publicar evento
+        Order savedOrder = orderRepository.save(order);
+        eventPublisher.publishOrderCreated(savedOrder);
+        logger.info("Pedido criado com status RECEIVED - ID: {}", savedOrder.getId().getValue());
 
-        // Consultar API de fraudes para análise de risco
-        String riskLevel = fraudAnalysisPort.analyzeRisk(order);
+        // 3. Preparar requisição para análise de fraudes
+        FraudAnalysisRequest fraudRequest = new FraudAnalysisRequest(
+            command.customerId().getValue(),
+            command.amount(),
+            command.insuranceType().name(),
+            command.description()
+        );
+
+        // 4. Consultar API de fraudes para análise de risco
+        String riskLevelStr = fraudAnalysisPort.analyzeRisk(fraudRequest);
+        RiskLevel riskLevel = RiskLevel.fromString(riskLevelStr);
         logger.info("Nível de risco retornado: {} para customer: {}", riskLevel, command.customerId());
 
-        // Aplicar regras de negócio baseadas no nível de risco
-        Order processedOrder = applyRiskValidationRules(order, riskLevel);
+        // 5. Aplicar regras de negócio baseadas no nível de risco e valor
+        Order validatedOrder = applyRiskAndAmountValidationRules(savedOrder, riskLevel);
 
-        // Persistir o pedido
-        Order savedOrder = orderRepository.save(processedOrder);
+        // 6. Se passou na validação, alterar para PENDING (fora do método de validação)
+        if (validatedOrder.getStatus() == OrderStatus.VALIDATED) {
+            validatedOrder.markAsPending(); // VALIDATED -> PENDING
+            logger.info("Order {} aprovada para processamento - mudando para PENDING", validatedOrder.getId().getValue());
 
-        // Publicar evento baseado no status final
-        publishEventBasedOnStatus(savedOrder, riskLevel);
+            // Salvar mudança de status no banco e publicar evento
+            Order pendingOrder = orderRepository.save(validatedOrder);
+            eventPublisher.publishOrderPendingAnalysis(pendingOrder, riskLevel.name());
 
-        logger.info("Pedido criado com sucesso - ID: {}, Status: {}, Risk: {}",
-                   savedOrder.getId().getValue(), savedOrder.getStatus(), riskLevel);
+            // Trigger external services simulation after moving to PENDING
+            triggerExternalServices(pendingOrder);
 
-        return savedOrder;
+            logger.info("Pedido movido para PENDING - ID: {}, Status: {}, Risk: {}",
+                       pendingOrder.getId().getValue(), pendingOrder.getStatus(), riskLevel);
+
+            return pendingOrder;
+        }
+
+        logger.info("Pedido processado com sucesso - ID: {}, Status: {}, Risk: {}",
+                   validatedOrder.getId().getValue(), validatedOrder.getStatus(), riskLevel);
+
+        return validatedOrder;
     }
 
     /**
-     * Aplica regras de validação baseadas no nível de risco
+     * Aplica regras de validação baseadas no nível de risco e valor do seguro
+     * IMPORTANTE: Cada mudança de status persiste no banco e publica evento
      */
-    private Order applyRiskValidationRules(Order order, String riskLevel) {
-        switch (riskLevel.toUpperCase()) {
-            case "LOW":
-                // Baixo risco: aprovação automática para análise
-                order.updateStatus(OrderStatus.PENDING_PAYMENT);
-                logger.info("Baixo risco - Aprovado para pagamento: {}", order.getId().getValue());
-                break;
+    private Order applyRiskAndAmountValidationRules(Order order, RiskLevel riskLevel) {
+        // Validar se o valor está dentro dos limites para o tipo de cliente
+        boolean isAmountValid = amountValidator.isAmountValid(riskLevel, order.getInsuranceType(), order.getAmount());
 
-            case "MEDIUM":
-                // Risco médio: requer análise manual
-                order.updateStatus(OrderStatus.PENDING_ANALYSIS);
-                logger.info("Risco médio - Enviado para análise manual: {}", order.getId().getValue());
-                break;
+        if (isAmountValid) {
+            // Se o valor é válido, sempre marca como VALIDATED
+            order.validate(); // RECEIVED -> VALIDATED
+            logger.info("Análise de fraudes aprovada - Order {} validada com risco: {}",
+                       order.getId().getValue(), riskLevel);
 
-            case "HIGH":
-                // Alto risco: requer análise detalhada
-                order.updateStatus(OrderStatus.PENDING_ANALYSIS);
-                logger.warn("Alto risco - Análise detalhada necessária: {}", order.getId().getValue());
-                break;
+            // Salvar mudança de status no banco e publicar evento
+            Order savedOrder = orderRepository.save(order);
+            eventPublisher.publishOrderValidated(savedOrder);
+            return savedOrder;
+        } else {
+            // Valor acima do limite permitido - rejeitar diretamente
+            order.reject(); // RECEIVED -> REJECTED
+            logger.warn("Valor {} acima do limite para cliente {} - Rejeitado: {}",
+                       order.getAmount(), riskLevel, order.getId().getValue());
 
-            case "BLOCKED":
-                // Bloqueado: rejeição automática
-                order.updateStatus(OrderStatus.REJECTED);
-                logger.warn("Risco bloqueado - Pedido rejeitado: {}", order.getId().getValue());
-                break;
-
-            default:
-                // Fallback para análise manual
-                order.updateStatus(OrderStatus.PENDING_ANALYSIS);
-                logger.warn("Nível de risco desconhecido: {} - Enviado para análise manual", riskLevel);
+            // Salvar mudança de status no banco e publicar evento
+            Order savedOrder = orderRepository.save(order);
+            eventPublisher.publishOrderRejected(savedOrder, "Valor acima do limite permitido para o tipo de cliente");
+            return savedOrder;
         }
-
-        return order;
     }
 
-    /**
-     * Publica eventos baseados no status final do pedido
-     */
-    private void publishEventBasedOnStatus(Order order, String riskLevel) {
-        switch (order.getStatus()) {
-            case PENDING_PAYMENT:
-                eventPublisher.publishOrderCreated(order);
-                break;
-            case PENDING_ANALYSIS:
-                eventPublisher.publishOrderPendingAnalysis(order, riskLevel);
-                break;
-            case REJECTED:
-                eventPublisher.publishOrderRejected(order, "Alto risco de fraude - Nível: " + riskLevel);
-                break;
-            default:
-                eventPublisher.publishOrderCreated(order);
-        }
+    private void triggerExternalServices(Order order) {
+        // Simulação de chamada para serviços externos após o pedido ser movido para PENDING
+        logger.info("Chamando serviços externos para o pedido ID: {}", order.getId().getValue());
+        externalServicesSimulator.simulatePaymentProcessing(
+            order.getId().getValue().toString(),
+            order.getCustomerId().getValue(),
+            order.getAmount()
+        );
+        externalServicesSimulator.simulateSubscriptionAnalysis(
+            order.getId().getValue().toString(),
+            order.getCustomerId().getValue(),
+            order.getInsuranceType().name(),
+            order.getAmount()
+        );
     }
 }

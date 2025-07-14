@@ -30,7 +30,7 @@ public class Order {
         order.id = OrderId.generate();
         order.customerId = customerId;
         order.insuranceType = insuranceType;
-        order.status = OrderStatus.PENDING;
+        order.status = OrderStatus.RECEIVED; // Estado inicial quando solicitação é criada
         order.amount = amount;
         order.description = description;
         order.createdAt = LocalDateTime.now();
@@ -65,59 +65,64 @@ public class Order {
         }
     }
 
-    public void approve() {
-        if (status != OrderStatus.PENDING && status != OrderStatus.PROCESSING) {
-            throw new IllegalStateException("Cannot approve order with status: " + status);
+    /**
+     * Atualiza o status da ordem validando as regras de transição
+     */
+    public void updateStatus(OrderStatus newStatus) {
+        if (!this.status.canTransitionTo(newStatus)) {
+            throw new IllegalStateException(
+                String.format("Invalid state transition from %s to %s", this.status, newStatus)
+            );
         }
-        this.status = OrderStatus.APPROVED;
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    public void reject() {
-        if (status != OrderStatus.PENDING && status != OrderStatus.PROCESSING) {
-            throw new IllegalStateException("Cannot reject order with status: " + status);
-        }
-        this.status = OrderStatus.REJECTED;
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    public void cancel() {
-        if (status == OrderStatus.COMPLETED || status == OrderStatus.CANCELLED) {
-            throw new IllegalStateException("Cannot cancel order with status: " + status);
-        }
-        this.status = OrderStatus.CANCELLED;
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    public void process() {
-        if (status != OrderStatus.PENDING) {
-            throw new IllegalStateException("Cannot process order with status: " + status);
-        }
-        this.status = OrderStatus.PROCESSING;
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    public void complete() {
-        if (status != OrderStatus.APPROVED) {
-            throw new IllegalStateException("Cannot complete order with status: " + status);
-        }
-        this.status = OrderStatus.COMPLETED;
+        this.status = newStatus;
         this.updatedAt = LocalDateTime.now();
     }
 
     /**
-     * Atualiza o status do pedido (usado para análise de fraudes)
+     * Aprova a solicitação (pagamento e subscrição confirmados)
      */
-    public void updateStatus(OrderStatus newStatus) {
-        Objects.requireNonNull(newStatus, "New status cannot be null");
-
-        // Validações de transição de status
-        if (this.status == OrderStatus.COMPLETED || this.status == OrderStatus.CANCELLED) {
-            throw new IllegalStateException("Cannot update status from " + this.status + " to " + newStatus);
+    public void approve() {
+        if (status != OrderStatus.PENDING) {
+            throw new IllegalStateException("Can only approve orders in PENDING state");
         }
+        updateStatus(OrderStatus.APPROVED);
+    }
 
-        this.status = newStatus;
-        this.updatedAt = LocalDateTime.now();
+    /**
+     * Marca como pendente (aguardando pagamento e subscrição)
+     */
+    public void markAsPending() {
+        if (status != OrderStatus.VALIDATED) {
+            throw new IllegalStateException("Can only mark as pending orders in VALIDATED state");
+        }
+        updateStatus(OrderStatus.PENDING);
+    }
+
+    /**
+     * Valida a solicitação após análise de fraudes
+     */
+    public void validate() {
+        if (status != OrderStatus.RECEIVED) {
+            throw new IllegalStateException("Can only validate orders in RECEIVED state");
+        }
+        updateStatus(OrderStatus.VALIDATED);
+    }
+
+    /**
+     * Rejeita a solicitação
+     */
+    public void reject() {
+        updateStatus(OrderStatus.REJECTED);
+    }
+
+    /**
+     * Cancela a solicitação (apenas se permitido)
+     */
+    public void cancel() {
+        if (status == OrderStatus.APPROVED) {
+            throw new IllegalStateException("Cannot cancel approved order");
+        }
+        updateStatus(OrderStatus.CANCELLED);
     }
 
     // Getters

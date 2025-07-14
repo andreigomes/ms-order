@@ -54,14 +54,14 @@ public class UpdateOrderStatusService implements UpdateOrderStatusUseCase {
     @Override
     public Order processOrder(ProcessOrderCommand command) {
         Order order = findOrderById(command.orderId());
-        order.process();
+        order.markAsPending(); // Usar método existente ao invés de process()
         return orderRepository.save(order);
     }
 
     @Override
     public Order completeOrder(CompleteOrderCommand command) {
         Order order = findOrderById(command.orderId());
-        order.complete();
+        order.approve(); // Usar método existente ao invés de complete()
         Order savedOrder = orderRepository.save(order);
         eventPublisher.publishOrderCompleted(savedOrder);
         return savedOrder;
