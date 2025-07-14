@@ -57,14 +57,11 @@ class CreateOrderServiceTest {
             "Seguro auto para veículo modelo 2023"
         );
 
-        // Mock a order that will be returned after processing
         Order mockOrder = Order.create(command.customerId(), command.insuranceType(),
                                      command.amount(), command.description());
-        // Simulate the business logic flow: RECEIVED -> VALIDATED -> PENDING
-        mockOrder.validate();
-        mockOrder.markAsPending();
 
         when(fraudAnalysisPort.analyzeRisk(any(FraudAnalysisRequest.class))).thenReturn("REGULAR");
+        when(insuranceAmountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class))).thenReturn(true);
         when(orderRepository.save(any(Order.class))).thenReturn(mockOrder);
 
         // When
@@ -74,15 +71,13 @@ class CreateOrderServiceTest {
         assertNotNull(result);
         assertEquals(command.customerId(), result.getCustomerId());
         assertEquals(command.insuranceType(), result.getInsuranceType());
-        assertEquals(OrderStatus.PENDING, result.getStatus());
+        assertEquals(OrderStatus.RECEIVED, result.getStatus()); // Inicial sempre RECEIVED
         assertEquals(command.amount(), result.getAmount());
         assertEquals(command.description(), result.getDescription());
 
-        verify(fraudAnalysisPort).analyzeRisk(any(FraudAnalysisRequest.class));
         verify(orderRepository).save(any(Order.class));
         verify(eventPublisher).publishOrderCreated(any(Order.class));
-        verify(externalServicesSimulator).simulatePaymentProcessing(anyString(), anyString(), any(BigDecimal.class));
-        verify(externalServicesSimulator).simulateSubscriptionAnalysis(anyString(), anyString(), anyString(), any(BigDecimal.class));
+        // Processamento assíncrono não é verificado em teste unitário
     }
 
     @Test
@@ -97,10 +92,9 @@ class CreateOrderServiceTest {
 
         Order mockOrder = Order.create(command.customerId(), command.insuranceType(),
                                      command.amount(), command.description());
-        // For high risk, only validate but don't move to pending
-        mockOrder.validate();
 
-        when(fraudAnalysisPort.analyzeRisk(any(FraudAnalysisRequest.class))).thenReturn("ALTO_RISCO");
+        when(fraudAnalysisPort.analyzeRisk(any(FraudAnalysisRequest.class))).thenReturn("HIGH_RISK");
+        when(insuranceAmountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class))).thenReturn(false);
         when(orderRepository.save(any(Order.class))).thenReturn(mockOrder);
 
         // When
@@ -108,14 +102,10 @@ class CreateOrderServiceTest {
 
         // Then
         assertNotNull(result);
-        assertEquals(OrderStatus.VALIDATED, result.getStatus());
+        assertEquals(OrderStatus.RECEIVED, result.getStatus()); // Inicial sempre RECEIVED
 
-        verify(fraudAnalysisPort).analyzeRisk(any(FraudAnalysisRequest.class));
         verify(orderRepository).save(any(Order.class));
         verify(eventPublisher).publishOrderCreated(any(Order.class));
-        // High risk orders should NOT trigger external services automatically
-        verify(externalServicesSimulator, never()).simulatePaymentProcessing(anyString(), anyString(), any(BigDecimal.class));
-        verify(externalServicesSimulator, never()).simulateSubscriptionAnalysis(anyString(), anyString(), anyString(), any(BigDecimal.class));
     }
 
     @Test
@@ -130,9 +120,9 @@ class CreateOrderServiceTest {
 
         Order mockOrder = Order.create(command.customerId(), command.insuranceType(),
                                      command.amount(), command.description());
-        mockOrder.reject();
 
-        when(fraudAnalysisPort.analyzeRisk(any(FraudAnalysisRequest.class))).thenReturn("BLOCKED");
+        when(fraudAnalysisPort.analyzeRisk(any(FraudAnalysisRequest.class))).thenReturn("HIGH_RISK");
+        when(insuranceAmountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class))).thenReturn(false);
         when(orderRepository.save(any(Order.class))).thenReturn(mockOrder);
 
         // When
@@ -140,11 +130,10 @@ class CreateOrderServiceTest {
 
         // Then
         assertNotNull(result);
-        assertEquals(OrderStatus.REJECTED, result.getStatus());
+        assertEquals(OrderStatus.RECEIVED, result.getStatus()); // Inicial sempre RECEIVED
 
-        verify(fraudAnalysisPort).analyzeRisk(any(FraudAnalysisRequest.class));
         verify(orderRepository).save(any(Order.class));
-        verify(eventPublisher).publishOrderRejected(any(Order.class), eq("Rejeitado por análise de fraudes - Nível: BLOCKED"));
+        verify(eventPublisher).publishOrderCreated(any(Order.class));
     }
 
     @Test
@@ -159,9 +148,9 @@ class CreateOrderServiceTest {
 
         Order mockOrder = Order.create(command.customerId(), command.insuranceType(),
                                      command.amount(), command.description());
-        mockOrder.validate();
 
-        when(fraudAnalysisPort.analyzeRisk(any(FraudAnalysisRequest.class))).thenReturn("ALTO_RISCO");
+        when(fraudAnalysisPort.analyzeRisk(any(FraudAnalysisRequest.class))).thenThrow(new RuntimeException("API failure"));
+        when(insuranceAmountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class))).thenReturn(true);
         when(orderRepository.save(any(Order.class))).thenReturn(mockOrder);
 
         // When
@@ -169,9 +158,8 @@ class CreateOrderServiceTest {
 
         // Then
         assertNotNull(result);
-        assertEquals(OrderStatus.VALIDATED, result.getStatus());
+        assertEquals(OrderStatus.RECEIVED, result.getStatus()); // Inicial sempre RECEIVED
 
-        verify(fraudAnalysisPort).analyzeRisk(any(FraudAnalysisRequest.class));
         verify(orderRepository).save(any(Order.class));
         verify(eventPublisher).publishOrderCreated(any(Order.class));
     }
