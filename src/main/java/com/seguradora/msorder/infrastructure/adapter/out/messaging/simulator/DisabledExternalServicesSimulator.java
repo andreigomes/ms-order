@@ -35,7 +35,13 @@ public class DisabledExternalServicesSimulator implements ExternalServicesSimula
 
     @Override
     public void simulatePaymentAndSubscriptionProcessing(Order order) {
-        log.debug("🔄 Payment and subscription simulation disabled for order: {}", order.getId().getValue());
+        log.debug("🔄 Payment and subscription simulation disabled for order: {}", order.getId());
+        // Não faz nada quando desabilitado
+    }
+
+    @Override
+    public void triggerExternalServices(Order order) {
+        log.debug("🚀 External services simulation disabled for order: {}", order.getId());
         // Não faz nada quando desabilitado
     }
 }

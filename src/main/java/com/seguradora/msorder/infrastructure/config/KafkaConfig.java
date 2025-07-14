@@ -29,9 +29,21 @@ public class KafkaConfig {
         configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-        configProps.put(ProducerConfig.ACKS_CONFIG, "all");
+
+        // Configurações otimizadas para performance
+        configProps.put(ProducerConfig.ACKS_CONFIG, "1"); // Mudança: era "all", agora balanceado
         configProps.put(ProducerConfig.RETRIES_CONFIG, 3);
         configProps.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
+
+        // Otimizações de throughput
+        configProps.put(ProducerConfig.BATCH_SIZE_CONFIG, 16384); // 16KB batches
+        configProps.put(ProducerConfig.LINGER_MS_CONFIG, 5); // Aguarda 5ms para batching
+        configProps.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 33554432); // 32MB buffer
+        configProps.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "snappy"); // Compressão eficiente
+
+        // Configurações de conexão otimizadas
+        configProps.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 5);
+        configProps.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, 30000);
 
         return new DefaultKafkaProducerFactory<>(configProps);
     }

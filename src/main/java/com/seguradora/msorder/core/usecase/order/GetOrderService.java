@@ -3,11 +3,12 @@ package com.seguradora.msorder.core.usecase.order;
 import com.seguradora.msorder.core.domain.entity.Order;
 import com.seguradora.msorder.core.port.in.GetOrderUseCase;
 import com.seguradora.msorder.core.port.out.OrderRepositoryPort;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Implementação do caso de uso para consulta de pedidos
+ * Implementação otimizada do caso de uso para consulta de pedidos
  */
 @Service
 @Transactional(readOnly = true)
@@ -20,6 +21,7 @@ public class GetOrderService implements GetOrderUseCase {
     }
 
     @Override
+    @Cacheable(value = "orders", key = "#query.orderId().value", unless = "#result == null")
     public Order getOrderById(GetOrderQuery query) {
         return orderRepository.findById(query.orderId())
             .orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + query.orderId()));

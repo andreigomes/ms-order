@@ -3,21 +3,23 @@ package com.seguradora.msorder.core.port.out;
 import com.seguradora.msorder.core.domain.entity.Order;
 
 /**
- * Port para publicação de eventos de pedidos
+ * Port para publicação de eventos relacionados a pedidos
  */
 public interface OrderEventPublisherPort {
 
     void publishOrderCreated(Order order);
 
+    void publishOrderValidated(Order order);
+
+    void publishOrderPending(Order order);
+
     void publishOrderApproved(Order order);
 
     void publishOrderRejected(Order order);
 
-    void publishOrderRejected(Order order, String reason);
-
     void publishOrderCancelled(Order order);
 
-    void publishOrderCompleted(Order order);
+    void publishPaymentApproved(Order order);
 
-    void publishOrderPendingAnalysis(Order order, String riskLevel);
+    void publishSubscriptionApproved(Order order);
 }

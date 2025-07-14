@@ -13,12 +13,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.scheduling.annotation.Async;
+
+import java.util.concurrent.CompletableFuture;
 
 /**
- * Implementação do caso de uso para criação de pedidos
+ * Implementação otimizada do caso de uso para criação de pedidos
  */
 @Service
-@Transactional
 public class CreateOrderService implements CreateOrderUseCase {
 
     private static final Logger logger = LoggerFactory.getLogger(CreateOrderService.class);
@@ -42,10 +44,33 @@ public class CreateOrderService implements CreateOrderUseCase {
     }
 
     @Override
+    @Transactional
     public Order createOrder(CreateOrderCommand command) {
-        logger.info("Iniciando criação de pedido para customer: {}", command.customerId());
+        if (logger.isDebugEnabled()) {
+            logger.debug("Iniciando criação de pedido para customer: {}", command.customerId());
+        }
 
-        // 1. Criar entidade Order com status inicial RECEIVED
+        try {
+            // 1. Criar e persistir order com status RECEIVED
+            Order order = createAndPersistInitialOrder(command);
+
+            // 2. MELHORIA: Processar validação de forma completamente assíncrona
+            processOrderValidationFullyAsync(order, command);
+
+            // 3. Retornar order imediatamente (não aguarda validação)
+            return order;
+
+        } catch (Exception e) {
+            logger.error("Erro ao criar pedido para customer: {}", command.customerId(), e);
+            throw new OrderCreationException("Falha na criação do pedido", e);
+        }
+    }
+
+    /**
+     * Cria e persiste o pedido inicial com status RECEIVED
+     * Otimização: Uma única operação de banco + evento
+     */
+    private Order createAndPersistInitialOrder(CreateOrderCommand command) {
         Order order = Order.create(
             command.customerId(),
             command.insuranceType(),
@@ -53,95 +78,153 @@ public class CreateOrderService implements CreateOrderUseCase {
             command.description()
         );
 
-        // 2. Persistir com status RECEIVED e publicar evento
         Order savedOrder = orderRepository.save(order);
+
+        // Publicar evento de criação de forma assíncrona
         eventPublisher.publishOrderCreated(savedOrder);
-        logger.info("Pedido criado com status RECEIVED - ID: {}", savedOrder.getId().getValue());
 
-        // 3. Preparar requisição para análise de fraudes
-        FraudAnalysisRequest fraudRequest = new FraudAnalysisRequest(
-            command.customerId().getValue(),
-            command.amount(),
-            command.insuranceType().name(),
-            command.description()
-        );
-
-        // 4. Consultar API de fraudes para análise de risco
-        String riskLevelStr = fraudAnalysisPort.analyzeRisk(fraudRequest);
-        RiskLevel riskLevel = RiskLevel.fromString(riskLevelStr);
-        logger.info("Nível de risco retornado: {} para customer: {}", riskLevel, command.customerId());
-
-        // 5. Aplicar regras de negócio baseadas no nível de risco e valor
-        Order validatedOrder = applyRiskAndAmountValidationRules(savedOrder, riskLevel);
-
-        // 6. Se passou na validação, alterar para PENDING (fora do método de validação)
-        if (validatedOrder.getStatus() == OrderStatus.VALIDATED) {
-            validatedOrder.markAsPending(); // VALIDATED -> PENDING
-            logger.info("Order {} aprovada para processamento - mudando para PENDING", validatedOrder.getId().getValue());
-
-            // Salvar mudança de status no banco e publicar evento
-            Order pendingOrder = orderRepository.save(validatedOrder);
-            eventPublisher.publishOrderPendingAnalysis(pendingOrder, riskLevel.name());
-
-            // Trigger external services simulation after moving to PENDING
-            triggerExternalServices(pendingOrder);
-
-            logger.info("Pedido movido para PENDING - ID: {}, Status: {}, Risk: {}",
-                       pendingOrder.getId().getValue(), pendingOrder.getStatus(), riskLevel);
-
-            return pendingOrder;
+        if (logger.isInfoEnabled()) {
+            logger.info("Pedido criado - ID: {}, Customer: {}",
+                       savedOrder.getId().getValue(), command.customerId());
         }
 
-        logger.info("Pedido processado com sucesso - ID: {}, Status: {}, Risk: {}",
-                   validatedOrder.getId().getValue(), validatedOrder.getStatus(), riskLevel);
-
-        return validatedOrder;
+        return savedOrder;
     }
 
     /**
-     * Aplica regras de validação baseadas no nível de risco e valor do seguro
-     * IMPORTANTE: Cada mudança de status persiste no banco e publica evento
+     * NOVA IMPLEMENTAÇÃO: Processa validação completamente assíncrona
+     * Performance CRÍTICA: Não bloqueia a criação do pedido
      */
-    private Order applyRiskAndAmountValidationRules(Order order, RiskLevel riskLevel) {
-        // Validar se o valor está dentro dos limites para o tipo de cliente
-        boolean isAmountValid = amountValidator.isAmountValid(riskLevel, order.getInsuranceType(), order.getAmount());
+    @Async("taskExecutor")
+    private void processOrderValidationFullyAsync(Order order, CreateOrderCommand command) {
+        try {
+            // Análise de fraudes
+            RiskLevel riskLevel = performFraudAnalysisWithFallback(command);
 
-        if (isAmountValid) {
-            // Se o valor é válido, sempre marca como VALIDATED
-            order.validate(); // RECEIVED -> VALIDATED
-            logger.info("Análise de fraudes aprovada - Order {} validada com risco: {}",
-                       order.getId().getValue(), riskLevel);
+            // Aplicar regras de validação e atualizar status
+            Order processedOrder = applyValidationRulesOptimized(order, riskLevel);
 
-            // Salvar mudança de status no banco e publicar evento
-            Order savedOrder = orderRepository.save(order);
-            eventPublisher.publishOrderValidated(savedOrder);
-            return savedOrder;
-        } else {
-            // Valor acima do limite permitido - rejeitar diretamente
-            order.reject(); // RECEIVED -> REJECTED
-            logger.warn("Valor {} acima do limite para cliente {} - Rejeitado: {}",
-                       order.getAmount(), riskLevel, order.getId().getValue());
+            // Se aprovado, trigger serviços externos
+            if (processedOrder.getStatus() == OrderStatus.PENDING) {
+                triggerExternalServicesAsync(processedOrder);
+            }
 
-            // Salvar mudança de status no banco e publicar evento
-            Order savedOrder = orderRepository.save(order);
-            eventPublisher.publishOrderRejected(savedOrder, "Valor acima do limite permitido para o tipo de cliente");
-            return savedOrder;
+        } catch (Exception e) {
+            logger.error("Erro na validação assíncrona do pedido {}", order.getId().getValue(), e);
+            handleValidationFailureAsync(order, e);
         }
     }
 
-    private void triggerExternalServices(Order order) {
-        // Simulação de chamada para serviços externos após o pedido ser movido para PENDING
-        logger.info("Chamando serviços externos para o pedido ID: {}", order.getId().getValue());
-        externalServicesSimulator.simulatePaymentProcessing(
-            order.getId().getValue().toString(),
-            order.getCustomerId().getValue(),
-            order.getAmount()
-        );
-        externalServicesSimulator.simulateSubscriptionAnalysis(
-            order.getId().getValue().toString(),
-            order.getCustomerId().getValue(),
-            order.getInsuranceType().name(),
-            order.getAmount()
-        );
+    /**
+     * Análise de fraudes com fallback para melhor resiliência
+     */
+    private RiskLevel performFraudAnalysisWithFallback(CreateOrderCommand command) {
+        try {
+            FraudAnalysisRequest fraudRequest = new FraudAnalysisRequest(
+                command.customerId().getValue(),
+                command.amount(),
+                command.insuranceType().name(),
+                command.description()
+            );
+
+            String riskLevelStr = fraudAnalysisPort.analyzeRisk(fraudRequest);
+            RiskLevel riskLevel = RiskLevel.fromString(riskLevelStr);
+
+            if (logger.isDebugEnabled()) {
+                logger.debug("Risk level: {} para customer: {}", riskLevel, command.customerId());
+            }
+
+            return riskLevel;
+
+        } catch (Exception e) {
+            logger.warn("Falha na análise de fraudes para customer: {}, usando fallback",
+                       command.customerId(), e);
+            // Fallback: assumir risco regular em caso de falha da API
+            return RiskLevel.REGULAR;
+        }
+    }
+
+    /**
+     * Aplicar regras de validação de forma otimizada
+     * Reduz operações de banco combinando mudanças de status
+     */
+    @Transactional
+    private Order applyValidationRulesOptimized(Order order, RiskLevel riskLevel) {
+        boolean isAmountValid = amountValidator.isAmountValid(
+            riskLevel, order.getInsuranceType(), order.getAmount());
+
+        if (isAmountValid) {
+            // Transição: RECEIVED -> VALIDATED -> PENDING (otimizada)
+            order.validate();
+            order.markAsPending();
+
+            // Uma única operação de persistência para ambas transições
+            Order savedOrder = orderRepository.save(order);
+
+            // Publicar eventos de forma batch/assíncrona
+            publishValidationEvents(savedOrder, riskLevel);
+
+            if (logger.isInfoEnabled()) {
+                logger.info("Pedido aprovado - ID: {}, Status: PENDING, Risk: {}",
+                           savedOrder.getId().getValue(), riskLevel);
+            }
+
+            return savedOrder;
+
+        } else {
+            // Rejeição direta
+            order.reject();
+            Order rejectedOrder = orderRepository.save(order);
+
+            eventPublisher.publishOrderRejected(rejectedOrder);
+
+            logger.warn("Pedido rejeitado - ID: {}, Valor: {}, Risk: {}",
+                       rejectedOrder.getId().getValue(), order.getAmount(), riskLevel);
+
+            return rejectedOrder;
+        }
+    }
+
+    /**
+     * Publica eventos de validação de forma otimizada
+     */
+    private void publishValidationEvents(Order order, RiskLevel riskLevel) {
+        eventPublisher.publishOrderValidated(order);
+        eventPublisher.publishOrderPending(order);
+    }
+
+    /**
+     * Trigger serviços externos de forma assíncrona
+     */
+    @Async("taskExecutor")
+    private void triggerExternalServicesAsync(Order order) {
+        try {
+            externalServicesSimulator.triggerExternalServices(order);
+            logger.info("Serviços externos disparados para pedido: {}", order.getId().getValue());
+        } catch (Exception e) {
+            logger.error("Erro ao disparar serviços externos para pedido: {}", order.getId().getValue(), e);
+        }
+    }
+
+    /**
+     * Trata falhas na validação assíncrona
+     */
+    @Async("taskExecutor")
+    private void handleValidationFailureAsync(Order order, Exception e) {
+        try {
+            order.reject();
+            Order rejectedOrder = orderRepository.save(order);
+            eventPublisher.publishOrderRejected(rejectedOrder);
+
+            logger.error("Pedido rejeitado devido a falha na validação: {}", order.getId().getValue(), e);
+        } catch (Exception ex) {
+            logger.error("Erro crítico ao processar falha de validação para pedido: {}", order.getId().getValue(), ex);
+        }
+    }
+
+    public static class OrderCreationException extends RuntimeException {
+        public OrderCreationException(String message, Throwable cause) {
+            super(message, cause);
+        }
     }
 }

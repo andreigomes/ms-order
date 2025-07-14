@@ -56,18 +56,8 @@ public class TestKafkaConfig {
             }
 
             @Override
-            public void publishOrderCompleted(Order order) {
-                logger.info("Mock: Publishing ORDER_COMPLETED event for order: {}", order.getId());
-            }
-
-            @Override
-            public void publishOrderPendingAnalysis(Order order, String riskLevel) {
-                logger.info("Mock: Publishing ORDER_PENDING_ANALYSIS event for order: {} with risk level: {}", order.getId(), riskLevel);
-            }
-
-            @Override
-            public void publishPaymentProcessed(Order order, String transactionId) {
-                logger.info("Mock: Publishing PAYMENT_PROCESSED event for order: {} with transaction: {}", order.getId(), transactionId);
+            public void publishPaymentApproved(Order order, String transactionId) {
+                logger.info("Mock: Publishing PAYMENT_APPROVED event for order: {} with transaction: {}", order.getId(), transactionId);
             }
 
             @Override
@@ -76,13 +66,13 @@ public class TestKafkaConfig {
             }
 
             @Override
-            public void publishSubscriptionRejected(Order order, String reason) {
-                logger.info("Mock: Publishing SUBSCRIPTION_REJECTED event for order: {} with reason: {}", order.getId(), reason);
+            public void publishSubscriptionApproved(Order order) {
+                logger.info("Mock: Publishing SUBSCRIPTION_APPROVED event for order: {}", order.getId());
             }
 
             @Override
-            public void publishAdditionalInfoRequired(Order order, String reason) {
-                logger.info("Mock: Publishing ADDITIONAL_INFO_REQUIRED event for order: {} with reason: {}", order.getId(), reason);
+            public void publishSubscriptionRejected(Order order, String reason) {
+                logger.info("Mock: Publishing SUBSCRIPTION_REJECTED event for order: {} with reason: {}", order.getId(), reason);
             }
         };
     }

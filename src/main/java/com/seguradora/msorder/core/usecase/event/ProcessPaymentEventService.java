@@ -62,8 +62,8 @@ public class ProcessPaymentEventService implements ProcessPaymentEventUseCase {
             // A aprovação final acontece quando ambos (pagamento E subscrição) estão OK
             log.info("💳 Payment approved for order {}, waiting for subscription approval", order.getId());
 
-            // Publica evento de pagamento processado mas mantém ordem PENDING
-            eventPublisher.publishPaymentProcessed(order, paymentEvent.transactionId());
+            // Publica evento de pagamento aprovado mas mantém ordem PENDING
+            eventPublisher.publishPaymentApproved(order);
         } else {
             log.warn("⚠️ Payment approved but order {} is not in PENDING state: {}", order.getId(), order.getStatus());
         }
@@ -78,7 +78,7 @@ public class ProcessPaymentEventService implements ProcessPaymentEventUseCase {
             orderRepository.save(order);
 
             // Publica evento de pagamento rejeitado
-            eventPublisher.publishPaymentRejected(order, paymentEvent.reason());
+            eventPublisher.publishOrderRejected(order);
 
             log.info("📤 Order {} rejected due to payment failure", order.getId());
         }

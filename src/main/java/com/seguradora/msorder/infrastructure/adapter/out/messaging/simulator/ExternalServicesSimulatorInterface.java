@@ -14,4 +14,6 @@ public interface ExternalServicesSimulatorInterface {
     void simulateSubscriptionAnalysis(String orderId, String customerId, String insuranceType, BigDecimal amount);
 
     void simulatePaymentAndSubscriptionProcessing(Order order);
+
+    void triggerExternalServices(Order order);
 }

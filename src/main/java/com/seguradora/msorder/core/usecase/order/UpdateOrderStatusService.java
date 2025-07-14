@@ -5,11 +5,12 @@ import com.seguradora.msorder.core.domain.valueobject.OrderId;
 import com.seguradora.msorder.core.port.in.UpdateOrderStatusUseCase;
 import com.seguradora.msorder.core.port.out.OrderEventPublisherPort;
 import com.seguradora.msorder.core.port.out.OrderRepositoryPort;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Implementação do caso de uso para atualização de status de pedidos
+ * Implementação otimizada do caso de uso para atualização de status de pedidos
  */
 @Service
 @Transactional
@@ -25,6 +26,7 @@ public class UpdateOrderStatusService implements UpdateOrderStatusUseCase {
     }
 
     @Override
+    @CacheEvict(value = "orders", key = "#command.orderId().value")
     public Order approveOrder(ApproveOrderCommand command) {
         Order order = findOrderById(command.orderId());
         order.approve();
@@ -34,6 +36,7 @@ public class UpdateOrderStatusService implements UpdateOrderStatusUseCase {
     }
 
     @Override
+    @CacheEvict(value = "orders", key = "#command.orderId().value")
     public Order rejectOrder(RejectOrderCommand command) {
         Order order = findOrderById(command.orderId());
         order.reject();
@@ -43,6 +46,7 @@ public class UpdateOrderStatusService implements UpdateOrderStatusUseCase {
     }
 
     @Override
+    @CacheEvict(value = "orders", key = "#command.orderId().value")
     public Order cancelOrder(CancelOrderCommand command) {
         Order order = findOrderById(command.orderId());
         order.cancel();
@@ -63,7 +67,7 @@ public class UpdateOrderStatusService implements UpdateOrderStatusUseCase {
         Order order = findOrderById(command.orderId());
         order.approve(); // Usar método existente ao invés de complete()
         Order savedOrder = orderRepository.save(order);
-        eventPublisher.publishOrderCompleted(savedOrder);
+        eventPublisher.publishOrderApproved(savedOrder);
         return savedOrder;
     }
 

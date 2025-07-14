@@ -46,7 +46,7 @@ public class ExternalServicesSimulator implements ExternalServicesSimulatorInter
     public void simulatePaymentProcessing(String orderId, String customerId, BigDecimal amount) {
         CompletableFuture.delayedExecutor(properties.getPaymentDelaySeconds(), TimeUnit.SECONDS).execute(() -> {
             try {
-                PaymentEvent.PaymentStatus status = determinePaymentStatus(amount, customerId);
+                PaymentEvent.PaymentStatus status = determinePaymentStatus();
                 String transactionId = UUID.randomUUID().toString();
                 String reason = getPaymentReason(status);
 
@@ -89,7 +89,7 @@ public class ExternalServicesSimulator implements ExternalServicesSimulatorInter
                         status,
                         reason,
                         null, // riskLevel - já determinado pela análise de fraudes
-                        null, // premiumAdjustment - não é responsabilidade do simulador
+                        null, // premiumAdjustment - removido conforme solicitado
                         LocalDateTime.now()
                 );
 
@@ -104,32 +104,43 @@ public class ExternalServicesSimulator implements ExternalServicesSimulatorInter
         });
     }
 
-    private PaymentEvent.PaymentStatus determinePaymentStatus(BigDecimal amount, String customerId) {
-        // Se há configuração fixa, usa ela
-        if (properties.getFixedPaymentStatus() != null && !properties.getFixedPaymentStatus().isEmpty()) {
+    @Override
+    public void triggerExternalServices(Order order) {
+        log.info("🚀 Triggering external services simulation for order: {}", order.getId().getValue());
+
+        // Simular processamento de pagamento
+        simulatePaymentProcessing(
+                order.getId().getValue().toString(),
+                order.getCustomerId().getValue().toString(),
+                order.getAmount()
+        );
+
+        // Simular análise de subscrição
+        simulateSubscriptionAnalysis(
+                order.getId().getValue().toString(),
+                order.getCustomerId().getValue().toString(),
+                order.getInsuranceType().name(),
+                order.getAmount()
+        );
+    }
+
+    private PaymentEvent.PaymentStatus determinePaymentStatus() {
+        if (properties.getFixedPaymentStatus() != null) {
             return PaymentEvent.PaymentStatus.valueOf(properties.getFixedPaymentStatus());
         }
 
-        // Simula lógica de aprovação de pagamento
-        if (customerId.contains("BLOCKED")) {
-            return PaymentEvent.PaymentStatus.REJECTED;
-        }
-        if (amount.compareTo(new BigDecimal("10000")) > 0) {
-            return Math.random() > 0.3 ? PaymentEvent.PaymentStatus.APPROVED : PaymentEvent.PaymentStatus.REJECTED;
-        }
-        return Math.random() > 0.1 ? PaymentEvent.PaymentStatus.APPROVED : PaymentEvent.PaymentStatus.REJECTED;
+        // Simulação simples: 90% aprovado, 10% rejeitado
+        return Math.random() < 0.9 ? PaymentEvent.PaymentStatus.APPROVED : PaymentEvent.PaymentStatus.REJECTED;
     }
 
     private SubscriptionEvent.SubscriptionStatus determineSubscriptionStatus() {
-        // Se há configuração fixa, usa ela
-        if (properties.getFixedSubscriptionStatus() != null && !properties.getFixedSubscriptionStatus().isEmpty()) {
+        if (properties.getFixedSubscriptionStatus() != null) {
             return SubscriptionEvent.SubscriptionStatus.valueOf(properties.getFixedSubscriptionStatus());
         }
 
-        // Lógica aleatória padrão
-        return Math.random() > 0.2 ? SubscriptionEvent.SubscriptionStatus.APPROVED : SubscriptionEvent.SubscriptionStatus.REJECTED;
+        // Simulação simples: 85% aprovado, 15% rejeitado
+        return Math.random() < 0.85 ? SubscriptionEvent.SubscriptionStatus.APPROVED : SubscriptionEvent.SubscriptionStatus.REJECTED;
     }
-
 
     private String getPaymentReason(PaymentEvent.PaymentStatus status) {
         return switch (status) {
@@ -140,8 +151,8 @@ public class ExternalServicesSimulator implements ExternalServicesSimulatorInter
 
     private String getSubscriptionReason(SubscriptionEvent.SubscriptionStatus status) {
         return switch (status) {
-            case APPROVED -> "Risk assessment passed";
-            case REJECTED -> "High risk profile detected";
+            case APPROVED -> "Risk analysis approved";
+            case REJECTED -> "Risk too high for coverage";
         };
     }
 
@@ -163,11 +174,11 @@ public class ExternalServicesSimulator implements ExternalServicesSimulatorInter
     }
 
     private void sendPaymentEvent(Order order) {
-        simulatePaymentProcessing(order.getId().getValue().toString(), order.getCustomerId().getValue(), order.getAmount());
+        simulatePaymentProcessing(order.getId().getValue().toString(), order.getCustomerId().getValue().toString(), order.getAmount());
     }
 
     private void sendSubscriptionEvent(Order order) {
-        simulateSubscriptionAnalysis(order.getId().getValue().toString(), order.getCustomerId().getValue(),
+        simulateSubscriptionAnalysis(order.getId().getValue().toString(), order.getCustomerId().getValue().toString(),
                                    order.getInsuranceType().name(), order.getAmount());
     }
 }

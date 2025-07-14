@@ -12,8 +12,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
-
 /**
  * Serviço responsável por processar eventos de subscrição/underwriting
  */
@@ -55,7 +53,8 @@ public class ProcessSubscriptionEventService implements ProcessSubscriptionEvent
     }
 
     private void handleSubscriptionApproved(Order order, SubscriptionEvent subscriptionEvent) {
-        log.info("✅ Subscription approved for order: {}", order.getId());
+        log.info("✅ Subscription approved for order: {} - Reason: {}",
+                order.getId(), subscriptionEvent.reason());
 
         // Se ordem está PENDING, verifica se pode aprovar final
         if (order.getStatus() == OrderStatus.PENDING) {
@@ -65,7 +64,7 @@ public class ProcessSubscriptionEventService implements ProcessSubscriptionEvent
             orderRepository.save(order);
 
             // Publica evento de ordem aprovada
-            eventPublisher.publishOrderApproved(order);
+            eventPublisher.publishSubscriptionApproved(order);
 
             log.info("🎉 Order {} fully approved - ready for policy issuance", order.getId());
         } else {
@@ -83,7 +82,7 @@ public class ProcessSubscriptionEventService implements ProcessSubscriptionEvent
             orderRepository.save(order);
 
             // Publica evento de subscrição rejeitada
-            eventPublisher.publishSubscriptionRejected(order, subscriptionEvent.reason());
+            eventPublisher.publishOrderRejected(order);
 
             log.info("📤 Order {} rejected due to subscription failure", order.getId());
         }

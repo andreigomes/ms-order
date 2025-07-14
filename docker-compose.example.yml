@@ -1,0 +1,158 @@
+# Exemplo de docker-compose.yml demonstrando como configurar o simulador
+
+version: '3.8'
+
+services:
+  ms-order:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      # Configurações do banco
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/seguradora_orders
+      SPRING_DATASOURCE_USERNAME: seguradora_user
+      SPRING_DATASOURCE_PASSWORD: seguradora_pass
+
+      # Configurações do Kafka
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
+      # Configurações da API de Fraudes
+      FRAUD_API_BASE_URL: http://fraud-api-mock:8081
+
+      # =============================================
+      # CONFIGURAÇÕES DO SIMULADOR DE SERVIÇOS EXTERNOS
+      # =============================================
+
+      # Habilita/desabilita o simulador (true/false)
+      APP_SIMULATOR_ENABLED: "true"
+
+      # Status fixo para pagamento (APPROVED/REJECTED ou vazio para lógica aleatória)
+      APP_SIMULATOR_FIXED_PAYMENT_STATUS: ""
+
+      # Status fixo para subscrição (APPROVED/REJECTED ou vazio para lógica aleatória)
+      APP_SIMULATOR_FIXED_SUBSCRIPTION_STATUS: ""
+
+      # Delay em segundos para simular processamento de pagamento (padrão: 2)
+      APP_SIMULATOR_PAYMENT_DELAY: "2"
+
+      # Delay em segundos para simular análise de subscrição (padrão: 3)
+      APP_SIMULATOR_SUBSCRIPTION_DELAY: "3"
+
+    depends_on:
+      - postgres
+      - kafka
+      - fraud-api-mock
+
+  # =============================================
+  # EXEMPLO: SIMULADOR SEMPRE APROVANDO
+  # =============================================
+  ms-order-always-approve:
+    build: .
+    ports:
+      - "8081:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/seguradora_orders
+      SPRING_DATASOURCE_USERNAME: seguradora_user
+      SPRING_DATASOURCE_PASSWORD: seguradora_pass
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      FRAUD_API_BASE_URL: http://fraud-api-mock:8081
+
+      # Simulador configurado para sempre aprovar pagamentos e subscrições
+      APP_SIMULATOR_ENABLED: "true"
+      APP_SIMULATOR_FIXED_PAYMENT_STATUS: "APPROVED"
+      APP_SIMULATOR_FIXED_SUBSCRIPTION_STATUS: "APPROVED"
+      APP_SIMULATOR_PAYMENT_DELAY: "1"        # Mais rápido para testes
+      APP_SIMULATOR_SUBSCRIPTION_DELAY: "1"   # Mais rápido para testes
+
+    depends_on:
+      - postgres
+      - kafka
+      - fraud-api-mock
+
+  # =============================================
+  # EXEMPLO: SIMULADOR SEMPRE REJEITANDO
+  # =============================================
+  ms-order-always-reject:
+    build: .
+    ports:
+      - "8082:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/seguradora_orders
+      SPRING_DATASOURCE_USERNAME: seguradora_user
+      SPRING_DATASOURCE_PASSWORD: seguradora_pass
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      FRAUD_API_BASE_URL: http://fraud-api-mock:8081
+
+      # Simulador configurado para sempre rejeitar pagamentos e subscrições
+      APP_SIMULATOR_ENABLED: "true"
+      APP_SIMULATOR_FIXED_PAYMENT_STATUS: "REJECTED"
+      APP_SIMULATOR_FIXED_SUBSCRIPTION_STATUS: "REJECTED"
+      APP_SIMULATOR_PAYMENT_DELAY: "1"
+      APP_SIMULATOR_SUBSCRIPTION_DELAY: "1"
+
+    depends_on:
+      - postgres
+      - kafka
+      - fraud-api-mock
+
+  # =============================================
+  # EXEMPLO: SEM SIMULADOR (PRODUÇÃO)
+  # =============================================
+  ms-order-production:
+    build: .
+    ports:
+      - "8083:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/seguradora_orders
+      SPRING_DATASOURCE_USERNAME: seguradora_user
+      SPRING_DATASOURCE_PASSWORD: seguradora_pass
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      FRAUD_API_BASE_URL: http://fraud-api-mock:8081
+
+      # Simulador desabilitado - aguarda eventos reais dos serviços externos
+      APP_SIMULATOR_ENABLED: "false"
+
+    depends_on:
+      - postgres
+      - kafka
+      - fraud-api-mock
+
+  # Infraestrutura
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: seguradora_orders
+      POSTGRES_USER: seguradora_user
+      POSTGRES_PASSWORD: seguradora_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  fraud-api-mock:
+    build: ./fraud-api-mock
+    ports:
+      - "8081:8081"
+
+volumes:
+  postgres_data:
