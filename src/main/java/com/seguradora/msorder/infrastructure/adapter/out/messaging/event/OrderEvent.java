@@ -22,8 +22,20 @@ public record OrderEvent(
 
     public static OrderEvent orderCreated(String orderId, String customerId, InsuranceType insuranceType,
                                          BigDecimal amount, String description) {
-        return new OrderEvent(orderId, customerId, insuranceType, OrderStatus.PENDING,
+        return new OrderEvent(orderId, customerId, insuranceType, OrderStatus.RECEIVED,
                              amount, description, LocalDateTime.now(), "ORDER_CREATED");
+    }
+
+    public static OrderEvent orderValidated(String orderId, String customerId, InsuranceType insuranceType,
+                                           BigDecimal amount, String description) {
+        return new OrderEvent(orderId, customerId, insuranceType, OrderStatus.VALIDATED,
+                             amount, description, LocalDateTime.now(), "ORDER_VALIDATED");
+    }
+
+    public static OrderEvent orderPending(String orderId, String customerId, InsuranceType insuranceType,
+                                         BigDecimal amount, String description) {
+        return new OrderEvent(orderId, customerId, insuranceType, OrderStatus.PENDING,
+                             amount, description, LocalDateTime.now(), "ORDER_PENDING");
     }
 
     public static OrderEvent orderApproved(String orderId, String customerId, InsuranceType insuranceType,
@@ -46,13 +58,39 @@ public record OrderEvent(
 
     public static OrderEvent orderCompleted(String orderId, String customerId, InsuranceType insuranceType,
                                            BigDecimal amount, String description) {
-        return new OrderEvent(orderId, customerId, insuranceType, OrderStatus.COMPLETED,
+        return new OrderEvent(orderId, customerId, insuranceType, OrderStatus.APPROVED,
                              amount, description, LocalDateTime.now(), "ORDER_COMPLETED");
     }
 
     public static OrderEvent orderPendingAnalysis(String orderId, String customerId, InsuranceType insuranceType,
-                                                 BigDecimal amount, String description) {
-        return new OrderEvent(orderId, customerId, insuranceType, OrderStatus.PENDING_ANALYSIS,
+                                                  BigDecimal amount, String description) {
+        return new OrderEvent(orderId, customerId, insuranceType, OrderStatus.VALIDATED,
                              amount, description, LocalDateTime.now(), "ORDER_PENDING_ANALYSIS");
+    }
+
+    // Novos métodos para eventos de pagamento
+    public static OrderEvent paymentProcessed(String orderId, String customerId, InsuranceType insuranceType,
+                                             BigDecimal amount, String description) {
+        return new OrderEvent(orderId, customerId, insuranceType, OrderStatus.PENDING,
+                             amount, description, LocalDateTime.now(), "PAYMENT_PROCESSED");
+    }
+
+    public static OrderEvent paymentRejected(String orderId, String customerId, InsuranceType insuranceType,
+                                            BigDecimal amount, String description) {
+        return new OrderEvent(orderId, customerId, insuranceType, OrderStatus.REJECTED,
+                             amount, description, LocalDateTime.now(), "PAYMENT_REJECTED");
+    }
+
+    // Novos métodos para eventos de subscrição
+    public static OrderEvent subscriptionRejected(String orderId, String customerId, InsuranceType insuranceType,
+                                                  BigDecimal amount, String description) {
+        return new OrderEvent(orderId, customerId, insuranceType, OrderStatus.REJECTED,
+                             amount, description, LocalDateTime.now(), "SUBSCRIPTION_REJECTED");
+    }
+
+    public static OrderEvent additionalInfoRequired(String orderId, String customerId, InsuranceType insuranceType,
+                                                    BigDecimal amount, String description) {
+        return new OrderEvent(orderId, customerId, insuranceType, OrderStatus.PENDING,
+                             amount, description, LocalDateTime.now(), "ADDITIONAL_INFO_REQUIRED");
     }
 }

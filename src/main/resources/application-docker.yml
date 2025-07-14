@@ -1,0 +1,53 @@
+spring:
+  profiles:
+    active: docker
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/seguradora_orders}
+    username: ${SPRING_DATASOURCE_USERNAME:seguradora_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:seguradora_pass}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: seguradora-orders
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+
+app:
+  # Configuração da API de fraudes
+  fraud-api:
+    url: ${FRAUD_API_BASE_URL:http://fraud-api-mock:8081}/api/v1
+
+  # Configurações do Simulador de Serviços Externos
+  simulator:
+    enabled: ${APP_SIMULATOR_ENABLED:true}  # Habilita/desabilita o simulador
+    fixed-payment-status: ${APP_SIMULATOR_FIXED_PAYMENT_STATUS:}      # APPROVED ou REJECTED (vazio = usar lógica aleatória)
+    fixed-subscription-status: ${APP_SIMULATOR_FIXED_SUBSCRIPTION_STATUS:} # APPROVED ou REJECTED (vazio = usar lógica aleatória)
+    payment-delay-seconds: ${APP_SIMULATOR_PAYMENT_DELAY:2}        # Delay em segundos para simular processamento de pagamento
+    subscription-delay-seconds: ${APP_SIMULATOR_SUBSCRIPTION_DELAY:3}   # Delay em segundos para simular análise de subscrição
+
+logging:
+  level:
+    com.seguradora.msorder: INFO
+    org.springframework.web: DEBUG

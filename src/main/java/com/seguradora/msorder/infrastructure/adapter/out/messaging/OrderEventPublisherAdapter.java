@@ -38,6 +38,32 @@ public class OrderEventPublisherAdapter implements OrderEventPublisherPort {
     }
 
     @Override
+    public void publishOrderValidated(Order order) {
+        OrderEvent event = OrderEvent.orderValidated(
+            order.getId().toString(),
+            order.getCustomerId().toString(),
+            order.getInsuranceType(),
+            order.getAmount(),
+            order.getDescription()
+        );
+        publishEvent(event);
+        logger.info("Published ORDER_VALIDATED event for order: {}", order.getId());
+    }
+
+    @Override
+    public void publishOrderPending(Order order) {
+        OrderEvent event = OrderEvent.orderPending(
+            order.getId().toString(),
+            order.getCustomerId().toString(),
+            order.getInsuranceType(),
+            order.getAmount(),
+            order.getDescription()
+        );
+        publishEvent(event);
+        logger.info("Published ORDER_PENDING event for order: {}", order.getId());
+    }
+
+    @Override
     public void publishOrderApproved(Order order) {
         OrderEvent event = OrderEvent.orderApproved(
             order.getId().toString(),
@@ -101,10 +127,64 @@ public class OrderEventPublisherAdapter implements OrderEventPublisherPort {
             order.getCustomerId().toString(),
             order.getInsuranceType(),
             order.getAmount(),
-            "Pending analysis - Risk level: " + riskLevel
+            "Pending analysis: " + riskLevel
         );
         publishEvent(event);
-        logger.info("Published ORDER_PENDING_ANALYSIS event for order: {} - Risk: {}", order.getId(), riskLevel);
+        logger.info("Published ORDER_PENDING_ANALYSIS event for order: {} - Risk Level: {}", order.getId(), riskLevel);
+    }
+
+    // Novos métodos para eventos de pagamento
+    @Override
+    public void publishPaymentProcessed(Order order, String transactionId) {
+        OrderEvent event = OrderEvent.paymentProcessed(
+            order.getId().toString(),
+            order.getCustomerId().toString(),
+            order.getInsuranceType(),
+            order.getAmount(),
+            "Payment processed - Transaction: " + transactionId
+        );
+        publishEvent(event);
+        logger.info("Published PAYMENT_PROCESSED event for order: {} - Transaction: {}", order.getId(), transactionId);
+    }
+
+    @Override
+    public void publishPaymentRejected(Order order, String reason) {
+        OrderEvent event = OrderEvent.paymentRejected(
+            order.getId().toString(),
+            order.getCustomerId().toString(),
+            order.getInsuranceType(),
+            order.getAmount(),
+            "Payment rejected: " + reason
+        );
+        publishEvent(event);
+        logger.info("Published PAYMENT_REJECTED event for order: {} - Reason: {}", order.getId(), reason);
+    }
+
+    // Novos métodos para eventos de subscrição
+    @Override
+    public void publishSubscriptionRejected(Order order, String reason) {
+        OrderEvent event = OrderEvent.subscriptionRejected(
+            order.getId().toString(),
+            order.getCustomerId().toString(),
+            order.getInsuranceType(),
+            order.getAmount(),
+            "Subscription rejected: " + reason
+        );
+        publishEvent(event);
+        logger.info("Published SUBSCRIPTION_REJECTED event for order: {} - Reason: {}", order.getId(), reason);
+    }
+
+    @Override
+    public void publishAdditionalInfoRequired(Order order, String reason) {
+        OrderEvent event = OrderEvent.additionalInfoRequired(
+            order.getId().toString(),
+            order.getCustomerId().toString(),
+            order.getInsuranceType(),
+            order.getAmount(),
+            "Additional information required: " + reason
+        );
+        publishEvent(event);
+        logger.info("Published ADDITIONAL_INFO_REQUIRED event for order: {} - Info: {}", order.getId(), reason);
     }
 
     private void publishEvent(OrderEvent event) {

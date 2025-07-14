@@ -1,5 +1,6 @@
 package com.seguradora.msorder.infrastructure.config;
 
+import com.seguradora.msorder.core.domain.service.InsuranceAmountValidator;
 import com.seguradora.msorder.core.port.in.CreateOrderUseCase;
 import com.seguradora.msorder.core.port.in.GetOrderUseCase;
 import com.seguradora.msorder.core.port.in.ListOrdersUseCase;
@@ -11,6 +12,7 @@ import com.seguradora.msorder.core.usecase.order.CreateOrderService;
 import com.seguradora.msorder.core.usecase.order.GetOrderService;
 import com.seguradora.msorder.core.usecase.order.ListOrdersService;
 import com.seguradora.msorder.core.usecase.order.UpdateOrderStatusService;
+import com.seguradora.msorder.infrastructure.adapter.out.messaging.simulator.ExternalServicesSimulatorInterface;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
@@ -26,8 +28,10 @@ public class ApplicationConfig {
     @Bean
     public CreateOrderUseCase createOrderUseCase(OrderRepositoryPort orderRepository,
                                                OrderEventPublisherPort eventPublisher,
-                                               FraudAnalysisPort fraudAnalysisPort) {
-        return new CreateOrderService(orderRepository, eventPublisher, fraudAnalysisPort);
+                                               FraudAnalysisPort fraudAnalysisPort,
+                                               InsuranceAmountValidator insuranceAmountValidator,
+                                               ExternalServicesSimulatorInterface externalServicesSimulator) {
+        return new CreateOrderService(orderRepository, eventPublisher, fraudAnalysisPort, insuranceAmountValidator, externalServicesSimulator);
     }
 
     @Bean
