@@ -73,8 +73,14 @@ public class CreateOrderService implements CreateOrderUseCase {
     private Order createAndPersistInitialOrder(CreateOrderCommand command) {
         Order order = Order.create(
             command.customerId(),
-            command.insuranceType(),
-            command.amount(),
+            command.productId(),
+            command.category(),
+            command.salesChannel(),
+            command.paymentMethod(),
+            command.totalMonthlyPremiumAmount(),
+            command.insuredAmount(),
+            command.coverages(),
+            command.assistances(),
             command.description()
         );
 
@@ -122,8 +128,8 @@ public class CreateOrderService implements CreateOrderUseCase {
         try {
             FraudAnalysisRequest fraudRequest = new FraudAnalysisRequest(
                 command.customerId().getValue(),
-                command.amount(),
-                command.insuranceType().name(),
+                command.insuredAmount(),
+                command.category().name(),
                 command.description()
             );
 
@@ -151,7 +157,7 @@ public class CreateOrderService implements CreateOrderUseCase {
     @Transactional
     private Order applyValidationRulesOptimized(Order order, RiskLevel riskLevel) {
         boolean isAmountValid = amountValidator.isAmountValid(
-            riskLevel, order.getInsuranceType(), order.getAmount());
+            riskLevel, order.getCategory(), order.getInsuredAmount());
 
         if (isAmountValid) {
             // Transição: RECEIVED -> VALIDATED -> PENDING (otimizada)
@@ -179,7 +185,7 @@ public class CreateOrderService implements CreateOrderUseCase {
             eventPublisher.publishOrderRejected(rejectedOrder);
 
             logger.warn("Pedido rejeitado - ID: {}, Valor: {}, Risk: {}",
-                       rejectedOrder.getId().getValue(), order.getAmount(), riskLevel);
+                       rejectedOrder.getId().getValue(), order.getInsuredAmount(), riskLevel);
 
             return rejectedOrder;
         }

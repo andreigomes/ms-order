@@ -111,16 +111,16 @@ public class ExternalServicesSimulator implements ExternalServicesSimulatorInter
         // Simular processamento de pagamento
         simulatePaymentProcessing(
                 order.getId().getValue().toString(),
-                order.getCustomerId().getValue().toString(),
-                order.getAmount()
+                order.getCustomerId().getValue(),
+                order.getInsuredAmount()
         );
 
         // Simular análise de subscrição
         simulateSubscriptionAnalysis(
                 order.getId().getValue().toString(),
-                order.getCustomerId().getValue().toString(),
-                order.getInsuranceType().name(),
-                order.getAmount()
+                order.getCustomerId().getValue(),
+                order.getCategory().name(),
+                order.getInsuredAmount()
         );
     }
 
@@ -174,11 +174,11 @@ public class ExternalServicesSimulator implements ExternalServicesSimulatorInter
     }
 
     private void sendPaymentEvent(Order order) {
-        simulatePaymentProcessing(order.getId().getValue().toString(), order.getCustomerId().getValue().toString(), order.getAmount());
+        simulatePaymentProcessing(order.getId().getValue().toString(), order.getCustomerId().getValue(), order.getInsuredAmount());
     }
 
     private void sendSubscriptionEvent(Order order) {
-        simulateSubscriptionAnalysis(order.getId().getValue().toString(), order.getCustomerId().getValue().toString(),
-                                   order.getInsuranceType().name(), order.getAmount());
+        simulateSubscriptionAnalysis(order.getId().getValue().toString(), order.getCustomerId().getValue(),
+                                   order.getCategory().name(), order.getInsuredAmount());
     }
 }

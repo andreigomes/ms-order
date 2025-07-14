@@ -1,11 +1,11 @@
 spring:
-  profiles:
-    active: docker
+  application:
+    name: ms-order
 
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/seguradora_orders}
-    username: ${SPRING_DATASOURCE_USERNAME:seguradora_user}
-    password: ${SPRING_DATASOURCE_PASSWORD:seguradora_pass}
+    url: jdbc:postgresql://postgres:5432/seguradora_orders
+    username: seguradora_user
+    password: seguradora_pass
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -23,31 +23,49 @@ spring:
     baseline-on-migrate: true
 
   kafka:
-    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    bootstrap-servers: kafka:9092
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
     consumer:
-      group-id: seguradora-orders
+      group-id: ms-order-group
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
-        spring.json.trusted.packages: "*"
+        spring.json.trusted.packages: "com.seguradora.msorder"
+      auto-offset-reset: earliest
 
+# Configurações do simulador
 app:
-  # Configuração da API de fraudes
-  fraud-api:
-    url: ${FRAUD_API_BASE_URL:http://fraud-api-mock:8081}/api/v1
-
-  # Configurações do Simulador de Serviços Externos
   simulator:
-    enabled: ${APP_SIMULATOR_ENABLED:true}  # Habilita/desabilita o simulador
-    fixed-payment-status: ${APP_SIMULATOR_FIXED_PAYMENT_STATUS:}      # APPROVED ou REJECTED (vazio = usar lógica aleatória)
-    fixed-subscription-status: ${APP_SIMULATOR_FIXED_SUBSCRIPTION_STATUS:} # APPROVED ou REJECTED (vazio = usar lógica aleatória)
-    payment-delay-seconds: ${APP_SIMULATOR_PAYMENT_DELAY:2}        # Delay em segundos para simular processamento de pagamento
-    subscription-delay-seconds: ${APP_SIMULATOR_SUBSCRIPTION_DELAY:3}   # Delay em segundos para simular análise de subscrição
+    enabled: true
+    payment-delay-seconds: 2
+    subscription-delay-seconds: 3
+    # Status fixos para testes (deixar null para comportamento aleatório)
+    fixed-payment-status: null
+    fixed-subscription-status: null
+
+# Configurações de análise de fraudes (mock interno)
+fraud:
+  analysis:
+    enabled: true
+    fallback-risk-level: REGULAR
+
+# Configurações de cache
+spring:
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=10m
 
 logging:
   level:
     com.seguradora.msorder: INFO
-    org.springframework.web: DEBUG
+    org.springframework.kafka: WARN
+    org.hibernate.SQL: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

@@ -29,8 +29,8 @@ public class OrderEventPublisherAdapter implements OrderEventPublisherPort {
         OrderEvent event = OrderEvent.orderCreated(
             order.getId().toString(),
             order.getCustomerId().toString(),
-            order.getInsuranceType(),
-            order.getAmount(),
+            order.getCategory(),
+            order.getInsuredAmount(),
             order.getDescription()
         );
         publishEvent(event);
@@ -42,8 +42,8 @@ public class OrderEventPublisherAdapter implements OrderEventPublisherPort {
         OrderEvent event = OrderEvent.orderValidated(
             order.getId().toString(),
             order.getCustomerId().toString(),
-            order.getInsuranceType(),
-            order.getAmount(),
+            order.getCategory(),
+            order.getInsuredAmount(),
             order.getDescription()
         );
         publishEvent(event);
@@ -55,8 +55,8 @@ public class OrderEventPublisherAdapter implements OrderEventPublisherPort {
         OrderEvent event = OrderEvent.orderPending(
             order.getId().toString(),
             order.getCustomerId().toString(),
-            order.getInsuranceType(),
-            order.getAmount(),
+            order.getCategory(),
+            order.getInsuredAmount(),
             order.getDescription()
         );
         publishEvent(event);
@@ -64,51 +64,12 @@ public class OrderEventPublisherAdapter implements OrderEventPublisherPort {
     }
 
     @Override
-    public void publishSubscriptionApproved(Order order) {
-        OrderEvent event = OrderEvent.subscriptionApproved(
-            order.getId().toString(),
-            order.getCustomerId().toString(),
-            order.getInsuranceType(),
-            order.getAmount(),
-            order.getDescription()
-        );
-        publishEvent(event);
-        logger.info("Published SUBSCRIPTION_APPROVED event for order: {}", order.getId());
-    }
-
-    @Override
-    public void publishPaymentApproved(Order order) {
-        OrderEvent event = OrderEvent.paymentApproved(
-            order.getId().toString(),
-            order.getCustomerId().toString(),
-            order.getInsuranceType(),
-            order.getAmount(),
-            order.getDescription()
-        );
-        publishEvent(event);
-        logger.info("Published PAYMENT_APPROVED event for order: {}", order.getId());
-    }
-
-    @Override
-    public void publishOrderApproved(Order order) {
-        OrderEvent event = OrderEvent.orderApproved(
-            order.getId().toString(),
-            order.getCustomerId().toString(),
-            order.getInsuranceType(),
-            order.getAmount(),
-            order.getDescription()
-        );
-        publishEvent(event);
-        logger.info("Published ORDER_APPROVED event for order: {}", order.getId());
-    }
-
-    @Override
     public void publishOrderRejected(Order order) {
         OrderEvent event = OrderEvent.orderRejected(
             order.getId().toString(),
             order.getCustomerId().toString(),
-            order.getInsuranceType(),
-            order.getAmount(),
+            order.getCategory(),
+            order.getInsuredAmount(),
             order.getDescription()
         );
         publishEvent(event);
@@ -120,12 +81,51 @@ public class OrderEventPublisherAdapter implements OrderEventPublisherPort {
         OrderEvent event = OrderEvent.orderCancelled(
             order.getId().toString(),
             order.getCustomerId().toString(),
-            order.getInsuranceType(),
-            order.getAmount(),
+            order.getCategory(),
+            order.getInsuredAmount(),
             order.getDescription()
         );
         publishEvent(event);
         logger.info("Published ORDER_CANCELLED event for order: {}", order.getId());
+    }
+
+    @Override
+    public void publishSubscriptionApproved(Order order) {
+        OrderEvent event = OrderEvent.subscriptionApproved(
+            order.getId().toString(),
+            order.getCustomerId().toString(),
+            order.getCategory(),
+            order.getInsuredAmount(),
+            order.getDescription()
+        );
+        publishEvent(event);
+        logger.info("Published SUBSCRIPTION_APPROVED event for order: {}", order.getId());
+    }
+
+    @Override
+    public void publishPaymentApproved(Order order) {
+        OrderEvent event = OrderEvent.paymentApproved(
+            order.getId().toString(),
+            order.getCustomerId().toString(),
+            order.getCategory(),
+            order.getInsuredAmount(),
+            order.getDescription()
+        );
+        publishEvent(event);
+        logger.info("Published PAYMENT_APPROVED event for order: {}", order.getId());
+    }
+
+    @Override
+    public void publishOrderApproved(Order order) {
+        OrderEvent event = OrderEvent.orderApproved(
+            order.getId().toString(),
+            order.getCustomerId().toString(),
+            order.getCategory(),
+            order.getInsuredAmount(),
+            order.getDescription()
+        );
+        publishEvent(event);
+        logger.info("Published ORDER_APPROVED event for order: {}", order.getId());
     }
 
     private void publishEvent(OrderEvent event) {

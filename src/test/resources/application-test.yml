@@ -2,56 +2,43 @@ spring:
   application:
     name: ms-order-test
 
-  datasource:
-    url: jdbc:h2:mem:testdb
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
-
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
-    show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
-
-  h2:
-    console:
-      enabled: true
+  # Configurações serão sobrescritas pelo TestContainers PostgreSQL
 
   kafka:
-    bootstrap-servers: localhost:9092
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    bootstrap-servers: localhost:61254
     consumer:
       group-id: test-group
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      enable-auto-commit: true
       properties:
-        spring.json.trusted.packages: "*"
+        session.timeout.ms: 10000
+        heartbeat.interval.ms: 3000
+        max.poll.interval.ms: 300000
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: 1
+      retries: 0
+      properties:
+        delivery.timeout.ms: 30000
+        request.timeout.ms: 5000
+        linger.ms: 0
+        batch.size: 16384
 
 app:
-  # Configuração da API de fraudes para testes (será mockada)
   fraud-api:
-    url: http://localhost:8081/api/v1
-
-  # Configurações do Simulador de Serviços Externos para testes
+    url: http://localhost:8080/api/v1
   simulator:
-    enabled: false  # Desabilitado por padrão nos testes (usa mocks)
-    fixed-payment-status: APPROVED      # Para testes que precisam de resultado fixo
-    fixed-subscription-status: APPROVED # Para testes que precisam de resultado fixo
-    payment-delay-seconds: 1            # Delay reduzido para testes mais rápidos
-    subscription-delay-seconds: 1       # Delay reduzido para testes mais rápidos
-
-# Desabilitar Kafka para testes simples
-kafka:
-  enabled: false
+    enabled: false
 
 logging:
   level:
-    com.seguradora.msorder: INFO
+    com.seguradora.msorder: DEBUG
     org.springframework.kafka: WARN
-    org.apache.kafka: ERROR
+    org.springframework.test: WARN
+    org.testcontainers: INFO
+    org.apache.kafka: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"

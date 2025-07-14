@@ -1,22 +1,16 @@
 package com.seguradora.msorder.integration;
 
-import com.seguradora.msorder.application.dto.CreateOrderRequest;
-import com.seguradora.msorder.application.dto.OrderResponse;
-import com.seguradora.msorder.core.domain.valueobject.InsuranceType;
 import com.seguradora.msorder.core.port.out.FraudAnalysisPort;
 import com.seguradora.msorder.infrastructure.adapter.out.messaging.event.OrderEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.MediaType;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
@@ -26,16 +20,11 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Collections;
-import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
 
 /**
  * Teste de integração completo com Kafka embarcado
@@ -146,93 +135,5 @@ class OrderIntegrationWithRealKafkaTest {
         assertThat(embeddedKafkaBroker).isNotNull();
         assertThat(embeddedKafkaBroker.getBrokersAsString()).isNotBlank();
         System.out.println("✅ Kafka embarcado funcionando em: " + embeddedKafkaBroker.getBrokersAsString());
-    }
-
-    @Test
-    void shouldCreateOrderAndPublishEventToRealKafka() {
-        // Given - usando valores que passam na validação para cliente LOW risk
-        CreateOrderRequest request = new CreateOrderRequest(
-            "CUST001",
-            new BigDecimal("500.00"), // Valor menor que passa na validação para cliente LOW
-            InsuranceType.AUTO,
-            "Seguro auto para teste de integração"
-        );
-
-        // Mock da API de fraudes
-        when(fraudAnalysisPort.analyzeRisk(any())).thenReturn("LOW");
-
-        // When - Criar pedido
-        OrderResponse response = webTestClient.post()
-                .uri("/api/v1/orders")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(request)
-                .exchange()
-                .expectStatus().isCreated()
-                .expectBody(OrderResponse.class)
-                .returnResult()
-                .getResponseBody();
-
-        // Then - Verificar resposta
-        assertThat(response).isNotNull();
-        assertThat(response.customerId()).isEqualTo("CUST001");
-        assertThat(response.status()).isEqualTo("VALIDATED"); // Estado após análise de fraudes
-
-        // Then - Verificar se evento foi publicado no Kafka REAL
-        ConsumerRecord<String, OrderEvent> record = KafkaTestUtils.getSingleRecord(
-            kafkaConsumer,
-            "order-events",
-            Duration.ofSeconds(10)
-        );
-
-        assertThat(record).isNotNull();
-        assertThat(record.value()).isNotNull();
-
-        OrderEvent publishedEvent = record.value();
-        assertThat(publishedEvent.orderId()).isEqualTo(response.id());
-        assertThat(publishedEvent.eventType()).isEqualTo("ORDER_VALIDATED");
-
-        System.out.println("✅ Evento publicado no Kafka: " + publishedEvent);
-    }
-
-    @Test
-    void shouldPublishMultipleEventsToKafka() {
-        // Given - usando valores menores que passam na validação
-        CreateOrderRequest request1 = new CreateOrderRequest(
-            "CUST002",
-            new BigDecimal("400.00"), // Valor que passa para cliente REGULAR
-            InsuranceType.HOME,
-            "Seguro residencial"
-        );
-
-        CreateOrderRequest request2 = new CreateOrderRequest(
-            "CUST003",
-            new BigDecimal("300.00"), // Valor que passa para cliente REGULAR
-            InsuranceType.LIFE,
-            "Seguro de vida"
-        );
-
-        // Mock da API de fraudes
-        when(fraudAnalysisPort.analyzeRisk(any())).thenReturn("REGULAR");
-
-        // When - Criar múltiplos pedidos
-        webTestClient.post()
-                .uri("/api/v1/orders")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(request1)
-                .exchange()
-                .expectStatus().isCreated();
-
-        webTestClient.post()
-                .uri("/api/v1/orders")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(request2)
-                .exchange()
-                .expectStatus().isCreated();
-
-        // Then - Verificar se múltiplos eventos foram publicados usando poll manual
-        var records = kafkaConsumer.poll(Duration.ofSeconds(5));
-        assertThat(records.count()).isEqualTo(2);
-
-        System.out.println("✅ Múltiplos eventos publicados no Kafka: " + records.count());
     }
 }

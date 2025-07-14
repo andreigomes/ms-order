@@ -1,0 +1,158 @@
+{
+  "mappings": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "/api/v1/fraud/analyze",
+        "bodyPatterns": [
+          {
+            "matchesJsonPath": "$.customerId",
+            "equalTo": "1001"
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "customerId": "1001",
+          "riskLevel": "PREFERENTIAL",
+          "reason": "Low risk customer with excellent credit history"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "/api/v1/fraud/analyze",
+        "bodyPatterns": [
+          {
+            "matchesJsonPath": "$.customerId",
+            "equalTo": "1002"
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "customerId": "1002",
+          "riskLevel": "REGULAR",
+          "reason": "Standard risk assessment completed"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "/api/v1/fraud/analyze",
+        "bodyPatterns": [
+          {
+            "matchesJsonPath": "$.customerId",
+            "equalTo": "1003"
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "customerId": "1003",
+          "riskLevel": "HIGH_RISK",
+          "reason": "Customer has outstanding debts and irregular payment history"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "/api/v1/fraud/analyze",
+        "bodyPatterns": [
+          {
+            "matchesJsonPath": "$.customerId",
+            "equalTo": "1004"
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "customerId": "1004",
+          "riskLevel": "REGULAR",
+          "reason": "Standard customer profile verified"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "/api/v1/fraud/analyze",
+        "bodyPatterns": [
+          {
+            "matchesJsonPath": "$.customerId",
+            "equalTo": "1005"
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "customerId": "1005",
+          "riskLevel": "PREFERENTIAL",
+          "reason": "Premium customer with long relationship history"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "/api/v1/fraud/analyze",
+        "bodyPatterns": [
+          {
+            "matchesJsonPath": "$.customerId",
+            "equalTo": "1006"
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "customerId": "1006",
+          "riskLevel": "NO_INFO",
+          "reason": "Insufficient data for risk assessment"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "/api/v1/fraud/analyze"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "riskLevel": "NO_INFO",
+          "reason": "Customer not found in database"
+        }
+      }
+    }
+  ]
+}

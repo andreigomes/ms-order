@@ -11,20 +11,30 @@
 
 -- Criar tabela de pedidos
 CREATE TABLE IF NOT EXISTS orders (
-    id UUID PRIMARY KEY,
-    customer_id VARCHAR(255) NOT NULL,
-    insurance_type VARCHAR(50) NOT NULL CHECK (insurance_type IN ('AUTO', 'HOME', 'LIFE', 'HEALTH', 'TRAVEL', 'BUSINESS')),
-    status VARCHAR(20) NOT NULL CHECK (status IN ('PENDING', 'PROCESSING', 'APPROVED', 'REJECTED', 'CANCELLED', 'COMPLETED')),
-    amount DECIMAL(19,2) NOT NULL CHECK (amount > 0),
+    id VARCHAR(36) PRIMARY KEY,
+    customer_id VARCHAR(36) NOT NULL,
+    product_id VARCHAR(36) NOT NULL,
+    category VARCHAR(50) NOT NULL, -- AUTO, VIDA, RESIDENCIAL, EMPRESARIAL, etc.
+    sales_channel VARCHAR(50) NOT NULL, -- MOBILE, WHATSAPP, WEB_SITE, etc.
+    payment_method VARCHAR(50) NOT NULL, -- CREDIT_CARD, DEBIT_ACCOUNT, BOLETO, PIX
+    total_monthly_premium_amount DECIMAL(15,2) NOT NULL,
+    insured_amount DECIMAL(15,2) NOT NULL,
+    coverages JSONB, -- Para PostgreSQL
+    assistances JSONB, -- Para PostgreSQL
     description TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    status VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    finished_at TIMESTAMP NULL,
+    history JSONB -- Para PostgreSQL
 );
 
 -- Criar índices para melhor performance
 CREATE INDEX IF NOT EXISTS idx_orders_customer_id ON orders(customer_id);
+CREATE INDEX IF NOT EXISTS idx_orders_product_id ON orders(product_id);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
-CREATE INDEX IF NOT EXISTS idx_orders_insurance_type ON orders(insurance_type);
+CREATE INDEX IF NOT EXISTS idx_orders_category ON orders(category);
+CREATE INDEX IF NOT EXISTS idx_orders_sales_channel ON orders(sales_channel);
 CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at);
 
 -- Criar função para atualizar updated_at automaticamente
@@ -42,14 +52,3 @@ CREATE TRIGGER update_orders_updated_at
     BEFORE UPDATE ON orders
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
-
--- Comentários nas tabelas e colunas
-COMMENT ON TABLE orders IS 'Tabela de pedidos de seguro';
-COMMENT ON COLUMN orders.id IS 'Identificador único do pedido';
-COMMENT ON COLUMN orders.customer_id IS 'Identificador do cliente';
-COMMENT ON COLUMN orders.insurance_type IS 'Tipo de seguro';
-COMMENT ON COLUMN orders.status IS 'Status do pedido';
-COMMENT ON COLUMN orders.amount IS 'Valor do pedido';
-COMMENT ON COLUMN orders.description IS 'Descrição do pedido';
-COMMENT ON COLUMN orders.created_at IS 'Data de criação do pedido';
-COMMENT ON COLUMN orders.updated_at IS 'Data da última atualização do pedido';

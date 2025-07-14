@@ -19,10 +19,14 @@ services:
 
   # Fraud API Mock (WireMock)
   fraud-api-mock:
-    build: ./fraud-api-mock
+    image: wiremock/wiremock:2.35.0
     container_name: seguradora-fraud-api
     ports:
-      - "8081:8081"
+      - "8081:8080"
+    volumes:
+      - ./wiremock/mappings:/home/wiremock/mappings
+      - ./wiremock/__files:/home/wiremock/__files
+    command: ["--global-response-templating", "--verbose"]
     networks:
       - seguradora-network
 
@@ -73,7 +77,9 @@ services:
       SPRING_DATASOURCE_USERNAME: seguradora_user
       SPRING_DATASOURCE_PASSWORD: seguradora_pass
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      FRAUD_API_BASE_URL: http://fraud-api-mock:8081
+      FRAUD_API_BASE_URL: http://fraud-api-mock:8080
+      # Simulador de serviços externos habilitado
+      APP_SIMULATOR_ENABLED: 'true'
     networks:
       - seguradora-network
 

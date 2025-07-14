@@ -8,7 +8,7 @@ import com.seguradora.msorder.core.port.out.FraudAnalysisPort;
 import com.seguradora.msorder.core.port.out.OrderEventPublisherPort;
 import com.seguradora.msorder.core.port.out.OrderRepositoryPort;
 import com.seguradora.msorder.infrastructure.adapter.out.external.dto.FraudAnalysisRequest;
-import com.seguradora.msorder.infrastructure.adapter.out.messaging.simulator.ExternalServicesSimulator;
+import com.seguradora.msorder.infrastructure.adapter.out.messaging.simulator.ExternalServicesSimulatorInterface;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,10 +16,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,7 +36,7 @@ class CreateOrderServiceTest {
     private FraudAnalysisPort fraudAnalysisPort;
 
     @Mock
-    private ExternalServicesSimulator externalServicesSimulator;
+    private ExternalServicesSimulatorInterface externalServicesSimulator;
 
     @Mock
     private InsuranceAmountValidator insuranceAmountValidator;
@@ -44,25 +45,35 @@ class CreateOrderServiceTest {
 
     @BeforeEach
     void setUp() {
-        createOrderService = new CreateOrderService(orderRepository, eventPublisher, fraudAnalysisPort, insuranceAmountValidator, externalServicesSimulator);
+        createOrderService = new CreateOrderService(orderRepository, eventPublisher, fraudAnalysisPort,
+                                                   insuranceAmountValidator, externalServicesSimulator);
     }
 
     @Test
-    void shouldCreateOrderWithLowRisk() {
+    void shouldCreateOrderWithLowRiskAndProceedToPending() {
         // Given
         CreateOrderCommand command = new CreateOrderCommand(
-            new CustomerId("CUST001"),
-            new BigDecimal("800.00"),
+            new CustomerId("1001"),
+            ProductId.of("PROD001"),
             InsuranceType.AUTO,
+            SalesChannel.WEB_SITE,
+            PaymentMethod.CREDIT_CARD,
+            new BigDecimal("80.00"),
+            new BigDecimal("800.00"),
+            Coverages.of(Map.of("collision", new BigDecimal("600.00"))),
+            Assistances.of(List.of("24h assistance")),
             "Seguro auto para veículo modelo 2023"
         );
 
-        Order mockOrder = Order.create(command.customerId(), command.insuranceType(),
-                                     command.amount(), command.description());
+        Order mockOrder = Order.create(command.customerId(), command.productId(), command.category(),
+                                     command.salesChannel(), command.paymentMethod(),
+                                     command.totalMonthlyPremiumAmount(), command.insuredAmount(),
+                                     command.coverages(), command.assistances(), command.description());
 
-        when(fraudAnalysisPort.analyzeRisk(any(FraudAnalysisRequest.class))).thenReturn("REGULAR");
-        when(insuranceAmountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class))).thenReturn(true);
         when(orderRepository.save(any(Order.class))).thenReturn(mockOrder);
+        when(fraudAnalysisPort.analyzeRisk(any(FraudAnalysisRequest.class))).thenReturn("PREFERENTIAL");
+        when(insuranceAmountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class)))
+                .thenReturn(true);
 
         // When
         Order result = createOrderService.createOrder(command);
@@ -70,97 +81,217 @@ class CreateOrderServiceTest {
         // Then
         assertNotNull(result);
         assertEquals(command.customerId(), result.getCustomerId());
-        assertEquals(command.insuranceType(), result.getInsuranceType());
-        assertEquals(OrderStatus.RECEIVED, result.getStatus()); // Inicial sempre RECEIVED
-        assertEquals(command.amount(), result.getAmount());
+        assertEquals(command.category(), result.getCategory());
+        assertEquals(OrderStatus.PENDING, result.getStatus());
+        assertEquals(command.insuredAmount(), result.getInsuredAmount());
         assertEquals(command.description(), result.getDescription());
 
-        verify(orderRepository).save(any(Order.class));
-        verify(eventPublisher).publishOrderCreated(any(Order.class));
-        // Processamento assíncrono não é verificado em teste unitário
+        verify(orderRepository, atLeastOnce()).save(any(Order.class));
+        verify(eventPublisher, times(1)).publishOrderCreated(any(Order.class));
+        verify(eventPublisher, times(1)).publishOrderValidated(any(Order.class));
+        verify(eventPublisher, times(1)).publishOrderPending(any(Order.class));
+        verify(externalServicesSimulator, times(1)).triggerExternalServices(any(Order.class));
     }
 
     @Test
-    void shouldCreateOrderWithHighRiskForAnalysis() {
+    void shouldCreateOrderWithHighRiskAndProceedToPending() {
         // Given
         CreateOrderCommand command = new CreateOrderCommand(
-            new CustomerId("CUST002"),
-            new BigDecimal("3000.00"),
+            new CustomerId("1002"),
+            ProductId.of("PROD002"),
             InsuranceType.HOME,
+            SalesChannel.PHONE,
+            PaymentMethod.BANK_TRANSFER,
+            new BigDecimal("300.00"),
+            new BigDecimal("3000.00"),
+            Coverages.of(Map.of("fire", new BigDecimal("2500.00"))),
+            Assistances.of(List.of("emergency repair")),
             "Seguro residencial"
         );
 
-        Order mockOrder = Order.create(command.customerId(), command.insuranceType(),
-                                     command.amount(), command.description());
+        Order mockOrder = Order.create(command.customerId(), command.productId(), command.category(),
+                                     command.salesChannel(), command.paymentMethod(),
+                                     command.totalMonthlyPremiumAmount(), command.insuredAmount(),
+                                     command.coverages(), command.assistances(), command.description());
 
-        when(fraudAnalysisPort.analyzeRisk(any(FraudAnalysisRequest.class))).thenReturn("HIGH_RISK");
-        when(insuranceAmountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class))).thenReturn(false);
         when(orderRepository.save(any(Order.class))).thenReturn(mockOrder);
+        when(fraudAnalysisPort.analyzeRisk(any(FraudAnalysisRequest.class))).thenReturn("HIGH_RISK");
+        when(insuranceAmountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class)))
+                .thenReturn(true);
 
         // When
         Order result = createOrderService.createOrder(command);
 
         // Then
         assertNotNull(result);
-        assertEquals(OrderStatus.RECEIVED, result.getStatus()); // Inicial sempre RECEIVED
+        assertEquals(OrderStatus.PENDING, result.getStatus());
 
-        verify(orderRepository).save(any(Order.class));
-        verify(eventPublisher).publishOrderCreated(any(Order.class));
+        verify(orderRepository, atLeastOnce()).save(any(Order.class));
+        verify(eventPublisher, times(1)).publishOrderCreated(any(Order.class));
+        verify(eventPublisher, times(1)).publishOrderValidated(any(Order.class));
+        verify(eventPublisher, times(1)).publishOrderPending(any(Order.class));
+        verify(externalServicesSimulator, times(1)).triggerExternalServices(any(Order.class));
     }
 
     @Test
-    void shouldRejectOrderWhenRiskIsBlocked() {
+    void shouldCreateOrderAndRejectWhenAmountIsInvalid() {
         // Given
         CreateOrderCommand command = new CreateOrderCommand(
-            new CustomerId("CUST003"),
-            new BigDecimal("50000.00"),
+            new CustomerId("1003"),
+            ProductId.of("PROD003"),
             InsuranceType.LIFE,
+            SalesChannel.BRANCH,
+            PaymentMethod.PIX,
+            new BigDecimal("500.00"),
+            new BigDecimal("50000.00"),
+            Coverages.of(Map.of("death", new BigDecimal("50000.00"))),
+            Assistances.of(List.of("beneficiary support")),
             "Seguro de vida de alto valor"
         );
 
-        Order mockOrder = Order.create(command.customerId(), command.insuranceType(),
-                                     command.amount(), command.description());
+        Order mockOrder = Order.create(command.customerId(), command.productId(), command.category(),
+                                     command.salesChannel(), command.paymentMethod(),
+                                     command.totalMonthlyPremiumAmount(), command.insuredAmount(),
+                                     command.coverages(), command.assistances(), command.description());
 
-        when(fraudAnalysisPort.analyzeRisk(any(FraudAnalysisRequest.class))).thenReturn("HIGH_RISK");
-        when(insuranceAmountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class))).thenReturn(false);
         when(orderRepository.save(any(Order.class))).thenReturn(mockOrder);
+        when(fraudAnalysisPort.analyzeRisk(any(FraudAnalysisRequest.class))).thenReturn("HIGH_RISK");
+        when(insuranceAmountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class)))
+                .thenReturn(false);
 
         // When
         Order result = createOrderService.createOrder(command);
 
         // Then
         assertNotNull(result);
-        assertEquals(OrderStatus.RECEIVED, result.getStatus()); // Inicial sempre RECEIVED
+        assertEquals(OrderStatus.REJECTED, result.getStatus());
 
-        verify(orderRepository).save(any(Order.class));
-        verify(eventPublisher).publishOrderCreated(any(Order.class));
+        verify(orderRepository, atLeastOnce()).save(any(Order.class));
+        verify(eventPublisher, times(1)).publishOrderCreated(any(Order.class));
+        verify(eventPublisher, times(1)).publishOrderRejected(any(Order.class));
+        verify(externalServicesSimulator, never()).triggerExternalServices(any(Order.class));
     }
 
     @Test
-    void shouldHandleFraudApiFailureGracefully() {
+    void shouldHandleFraudApiFailureGracefullyAndUseFallback() {
         // Given
         CreateOrderCommand command = new CreateOrderCommand(
-            new CustomerId("CUST004"),
-            new BigDecimal("1500.00"),
+            new CustomerId("1004"),
+            ProductId.of("PROD004"),
             InsuranceType.AUTO,
+            SalesChannel.MOBILE,
+            PaymentMethod.CREDIT_CARD,
+            new BigDecimal("150.00"),
+            new BigDecimal("1500.00"),
+            Coverages.of(Map.of("basic", new BigDecimal("1200.00"))),
+            Assistances.of(List.of("roadside assistance")),
             "Test order with API failure"
         );
 
-        Order mockOrder = Order.create(command.customerId(), command.insuranceType(),
-                                     command.amount(), command.description());
+        Order mockOrder = Order.create(command.customerId(), command.productId(), command.category(),
+                                     command.salesChannel(), command.paymentMethod(),
+                                     command.totalMonthlyPremiumAmount(), command.insuredAmount(),
+                                     command.coverages(), command.assistances(), command.description());
 
-        when(fraudAnalysisPort.analyzeRisk(any(FraudAnalysisRequest.class))).thenThrow(new RuntimeException("API failure"));
-        when(insuranceAmountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class))).thenReturn(true);
         when(orderRepository.save(any(Order.class))).thenReturn(mockOrder);
+        when(fraudAnalysisPort.analyzeRisk(any(FraudAnalysisRequest.class)))
+                .thenThrow(new RuntimeException("API failure"));
+        when(insuranceAmountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class)))
+                .thenReturn(true);
 
         // When
         Order result = createOrderService.createOrder(command);
 
         // Then
         assertNotNull(result);
-        assertEquals(OrderStatus.RECEIVED, result.getStatus()); // Inicial sempre RECEIVED
+        assertEquals(OrderStatus.PENDING, result.getStatus());
 
-        verify(orderRepository).save(any(Order.class));
-        verify(eventPublisher).publishOrderCreated(any(Order.class));
+        verify(orderRepository, atLeastOnce()).save(any(Order.class));
+        verify(eventPublisher, times(1)).publishOrderCreated(any(Order.class));
+        verify(eventPublisher, times(1)).publishOrderValidated(any(Order.class));
+        verify(eventPublisher, times(1)).publishOrderPending(any(Order.class));
+        verify(externalServicesSimulator, times(1)).triggerExternalServices(any(Order.class));
+    }
+
+    @Test
+    void shouldCreateOrderWithRegularRisk() {
+        // Given
+        CreateOrderCommand command = new CreateOrderCommand(
+            new CustomerId("1005"),
+            ProductId.of("PROD005"),
+            InsuranceType.AUTO,
+            SalesChannel.WHATSAPP,
+            PaymentMethod.PIX,
+            new BigDecimal("500.00"),
+            new BigDecimal("5000.00"),
+            Coverages.of(Map.of("collision", new BigDecimal("4000.00"))),
+            Assistances.of(List.of("24h assistance")),
+            "Seguro auto valor médio"
+        );
+
+        Order mockOrder = Order.create(command.customerId(), command.productId(), command.category(),
+                                     command.salesChannel(), command.paymentMethod(),
+                                     command.totalMonthlyPremiumAmount(), command.insuredAmount(),
+                                     command.coverages(), command.assistances(), command.description());
+
+        when(orderRepository.save(any(Order.class))).thenReturn(mockOrder);
+        when(fraudAnalysisPort.analyzeRisk(any(FraudAnalysisRequest.class))).thenReturn("REGULAR");
+        when(insuranceAmountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class)))
+                .thenReturn(true);
+
+        // When
+        Order result = createOrderService.createOrder(command);
+
+        // Then
+        assertNotNull(result);
+        assertEquals(command.customerId(), result.getCustomerId());
+        assertEquals(command.category(), result.getCategory());
+        assertEquals(OrderStatus.PENDING, result.getStatus());
+        assertEquals(command.insuredAmount(), result.getInsuredAmount());
+
+        verify(orderRepository, atLeastOnce()).save(any(Order.class));
+        verify(eventPublisher, times(1)).publishOrderCreated(any(Order.class));
+        verify(eventPublisher, times(1)).publishOrderValidated(any(Order.class));
+        verify(eventPublisher, times(1)).publishOrderPending(any(Order.class));
+        verify(externalServicesSimulator, times(1)).triggerExternalServices(any(Order.class));
+    }
+
+    @Test
+    void shouldRejectOrderWithNoInfoRiskAndHighAmount() {
+        // Given
+        CreateOrderCommand command = new CreateOrderCommand(
+            new CustomerId("1006"),
+            ProductId.of("PROD006"),
+            InsuranceType.LIFE,
+            SalesChannel.PARTNER,
+            PaymentMethod.BANK_TRANSFER,
+            new BigDecimal("1000.00"),
+            new BigDecimal("100000.00"),
+            Coverages.of(Map.of("death", new BigDecimal("100000.00"))),
+            Assistances.of(List.of("premium support")),
+            "Seguro de vida valor alto sem informações"
+        );
+
+        Order mockOrder = Order.create(command.customerId(), command.productId(), command.category(),
+                                     command.salesChannel(), command.paymentMethod(),
+                                     command.totalMonthlyPremiumAmount(), command.insuredAmount(),
+                                     command.coverages(), command.assistances(), command.description());
+
+        when(orderRepository.save(any(Order.class))).thenReturn(mockOrder);
+        when(fraudAnalysisPort.analyzeRisk(any(FraudAnalysisRequest.class))).thenReturn("NO_INFO");
+        when(insuranceAmountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class)))
+                .thenReturn(false);
+
+        // When
+        Order result = createOrderService.createOrder(command);
+
+        // Then
+        assertNotNull(result);
+        assertEquals(OrderStatus.REJECTED, result.getStatus());
+
+        verify(orderRepository, atLeastOnce()).save(any(Order.class));
+        verify(eventPublisher, times(1)).publishOrderCreated(any(Order.class));
+        verify(eventPublisher, times(1)).publishOrderRejected(any(Order.class));
+        verify(externalServicesSimulator, never()).triggerExternalServices(any(Order.class));
     }
 }

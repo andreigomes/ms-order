@@ -2,20 +2,31 @@ package com.seguradora.msorder.application.dto;
 
 import com.seguradora.msorder.core.domain.valueobject.InsuranceType;
 import com.seguradora.msorder.core.domain.valueobject.OrderStatus;
+import com.seguradora.msorder.core.domain.valueobject.SalesChannel;
+import com.seguradora.msorder.core.domain.valueobject.PaymentMethod;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 /**
- * DTO para resposta de pedidos
+ * DTO de resposta para operações de pedidos conforme especificação da API
  */
 public record OrderResponse(
     String id,
     String customerId,
-    InsuranceType insuranceType,
+    String productId,
+    InsuranceType category,
+    SalesChannel salesChannel,
+    PaymentMethod paymentMethod,
+    BigDecimal totalMonthlyPremiumAmount,
+    BigDecimal insuredAmount,
+    Map<String, BigDecimal> coverages,
+    List<String> assistances,
     OrderStatus status,
-    BigDecimal amount,
     String description,
     LocalDateTime createdAt,
-    LocalDateTime updatedAt
+    LocalDateTime updatedAt,
+    LocalDateTime finishedAt
 ) {}
