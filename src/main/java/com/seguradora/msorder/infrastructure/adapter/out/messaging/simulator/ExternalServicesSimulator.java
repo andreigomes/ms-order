@@ -79,9 +79,7 @@ public class ExternalServicesSimulator implements ExternalServicesSimulatorInter
         CompletableFuture.delayedExecutor(properties.getSubscriptionDelaySeconds(), TimeUnit.SECONDS).execute(() -> {
             try {
                 SubscriptionEvent.SubscriptionStatus status = determineSubscriptionStatus();
-                String riskLevel = determineRiskLevel(amount, insuranceType);
                 String reason = getSubscriptionReason(status);
-                BigDecimal premiumAdjustment = calculatePremiumAdjustment(amount, riskLevel);
 
                 SubscriptionEvent subscriptionEvent = new SubscriptionEvent(
                         orderId,
@@ -90,15 +88,15 @@ public class ExternalServicesSimulator implements ExternalServicesSimulatorInter
                         amount,
                         status,
                         reason,
-                        riskLevel,
-                        premiumAdjustment,
+                        null, // riskLevel - já determinado pela análise de fraudes
+                        null, // premiumAdjustment - não é responsabilidade do simulador
                         LocalDateTime.now()
                 );
 
                 subscriptionKafkaTemplate.send("subscription-events", orderId, subscriptionEvent);
 
-                log.info("📋 Subscription simulation sent for order {} - Status: {} - Risk: {} (Fixed: {})",
-                        orderId, status, riskLevel, properties.getFixedSubscriptionStatus() != null);
+                log.info("📋 Subscription simulation sent for order {} - Status: {} (Fixed: {})",
+                        orderId, status, properties.getFixedSubscriptionStatus() != null);
 
             } catch (Exception e) {
                 log.error("❌ Error simulating subscription for order: {}", orderId, e);
@@ -132,23 +130,6 @@ public class ExternalServicesSimulator implements ExternalServicesSimulatorInter
         return Math.random() > 0.2 ? SubscriptionEvent.SubscriptionStatus.APPROVED : SubscriptionEvent.SubscriptionStatus.REJECTED;
     }
 
-    private String determineRiskLevel(BigDecimal amount, String insuranceType) {
-        // Simular análise baseada no valor e tipo de seguro
-        if (amount.compareTo(new BigDecimal("500000")) > 0) return "HIGH_RISK";
-        if (amount.compareTo(new BigDecimal("100000")) > 0) return "REGULAR";
-        if (amount.compareTo(new BigDecimal("50000")) > 0) return "PREFERENTIAL";
-        return "NO_INFO";
-    }
-
-    private BigDecimal calculatePremiumAdjustment(BigDecimal amount, String riskLevel) {
-        return switch (riskLevel) {
-            case "HIGH_RISK" -> amount.multiply(new BigDecimal("0.15"));
-            case "REGULAR" -> amount.multiply(new BigDecimal("0.08"));
-            case "PREFERENTIAL" -> amount.multiply(new BigDecimal("0.05"));
-            case "NO_INFO" -> amount.multiply(new BigDecimal("0.10"));
-            default -> amount.multiply(new BigDecimal("0.08"));
-        };
-    }
 
     private String getPaymentReason(PaymentEvent.PaymentStatus status) {
         return switch (status) {
