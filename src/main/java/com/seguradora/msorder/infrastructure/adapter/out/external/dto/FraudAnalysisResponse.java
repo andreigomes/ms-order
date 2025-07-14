@@ -1,15 +1,32 @@
 package com.seguradora.msorder.infrastructure.adapter.out.external.dto;
 
-import java.time.LocalDateTime;
-
 /**
- * DTO para resposta da análise de risco de fraude
+ * DTO para resposta de análise de fraude
  */
-public record FraudAnalysisResponse(
-    String customerId,
-    String riskLevel, // LOW, MEDIUM, HIGH, BLOCKED
-    String reason,
-    double riskScore,
-    LocalDateTime analysisDate,
-    String analysisId
-) {}
+public class FraudAnalysisResponse {
+    private String riskLevel;
+    private String reason;
+
+    public FraudAnalysisResponse() {}
+
+    public FraudAnalysisResponse(String riskLevel, String reason) {
+        this.riskLevel = riskLevel;
+        this.reason = reason;
+    }
+
+    public String getRiskLevel() {
+        return riskLevel;
+    }
+
+    public void setRiskLevel(String riskLevel) {
+        this.riskLevel = riskLevel;
+    }
+
+    public String getReason() {
+        return reason;
+    }
+
+    public void setReason(String reason) {
+        this.reason = reason;
+    }
+}

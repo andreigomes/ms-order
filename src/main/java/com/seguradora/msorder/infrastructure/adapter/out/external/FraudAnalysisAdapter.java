@@ -1,82 +1,41 @@
 package com.seguradora.msorder.infrastructure.adapter.out.external;
 
-import com.seguradora.msorder.core.domain.entity.Order;
 import com.seguradora.msorder.core.port.out.FraudAnalysisPort;
 import com.seguradora.msorder.infrastructure.adapter.out.external.dto.FraudAnalysisRequest;
 import com.seguradora.msorder.infrastructure.adapter.out.external.dto.FraudAnalysisResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
 
 /**
- * Adapter para consumo da API de fraudes
+ * Adaptador para consumir a API de análise de fraudes
  */
 @Component
 public class FraudAnalysisAdapter implements FraudAnalysisPort {
 
-    private static final Logger logger = LoggerFactory.getLogger(FraudAnalysisAdapter.class);
+    private final WebClient webClient;
+    private final String fraudApiBaseUrl;
 
-    private final RestTemplate restTemplate;
-    private final String fraudApiUrl;
-
-    public FraudAnalysisAdapter(RestTemplate restTemplate,
-                               @Value("${app.fraud-api.url}") String fraudApiUrl) {
-        this.restTemplate = restTemplate;
-        this.fraudApiUrl = fraudApiUrl;
+    public FraudAnalysisAdapter(WebClient.Builder webClientBuilder,
+                               @Value("${fraud-api.base-url:http://localhost:8081}") String fraudApiBaseUrl) {
+        this.webClient = webClientBuilder.baseUrl(fraudApiBaseUrl).build();
+        this.fraudApiBaseUrl = fraudApiBaseUrl;
     }
 
     @Override
-    public String analyzeRisk(Order order) {
+    public String analyzeRisk(FraudAnalysisRequest request) {
         try {
-            logger.info("Consultando API de fraudes para customer: {}", order.getCustomerId().getValue());
+            FraudAnalysisResponse response = webClient.post()
+                .uri("/api/v1/fraud/analyze")
+                .bodyValue(request)
+                .retrieve()
+                .bodyToMono(FraudAnalysisResponse.class)
+                .block();
 
-            FraudAnalysisRequest request = new FraudAnalysisRequest(
-                order.getCustomerId().getValue(),
-                order.getAmount(),
-                order.getInsuranceType().name(),
-                order.getDescription()
-            );
-
-            FraudAnalysisResponse response = restTemplate.postForObject(
-                fraudApiUrl + "/fraud-analysis",
-                request,
-                FraudAnalysisResponse.class
-            );
-
-            if (response != null) {
-                logger.info("Análise de fraude concluída - Customer: {}, Risk: {}, Score: {}",
-                           response.customerId(), response.riskLevel(), response.riskScore());
-                return response.riskLevel();
-            }
-
-            logger.warn("Resposta nula da API de fraudes para customer: {}", order.getCustomerId().getValue());
-            return "MEDIUM"; // Fallback para risco médio
-
+            return response != null ? response.getRiskLevel() : "REGULAR";
         } catch (Exception e) {
-            logger.error("Erro ao consultar API de fraudes para customer: {}",
-                        order.getCustomerId().getValue(), e);
-            return "HIGH"; // Fallback para alto risco em caso de erro
-        }
-    }
-
-    @Override
-    public boolean isCustomerBlocked(String customerId) {
-        try {
-            logger.info("Verificando se customer está bloqueado: {}", customerId);
-
-            Boolean isBlocked = restTemplate.getForObject(
-                fraudApiUrl + "/customers/{customerId}/blocked",
-                Boolean.class,
-                customerId
-            );
-
-            return Boolean.TRUE.equals(isBlocked);
-
-        } catch (Exception e) {
-            logger.error("Erro ao verificar bloqueio do customer: {}", customerId, e);
-            return false; // Fallback para não bloqueado em caso de erro
+            // Em caso de erro, assumimos risco regular
+            return "REGULAR";
         }
     }
 }
