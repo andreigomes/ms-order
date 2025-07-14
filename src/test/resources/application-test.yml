@@ -11,7 +11,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
@@ -21,9 +21,37 @@ spring:
       enabled: true
 
   kafka:
-    bootstrap-servers: ${spring.embedded.kafka.brokers}
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: test-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+
+app:
+  # Configuração da API de fraudes para testes (será mockada)
+  fraud-api:
+    url: http://localhost:8081/api/v1
+
+  # Configurações do Simulador de Serviços Externos para testes
+  simulator:
+    enabled: false  # Desabilitado por padrão nos testes (usa mocks)
+    fixed-payment-status: APPROVED      # Para testes que precisam de resultado fixo
+    fixed-subscription-status: APPROVED # Para testes que precisam de resultado fixo
+    payment-delay-seconds: 1            # Delay reduzido para testes mais rápidos
+    subscription-delay-seconds: 1       # Delay reduzido para testes mais rápidos
+
+# Desabilitar Kafka para testes simples
+kafka:
+  enabled: false
 
 logging:
   level:
-    com.seguradora.msorder: DEBUG
+    com.seguradora.msorder: INFO
     org.springframework.kafka: WARN
+    org.apache.kafka: ERROR

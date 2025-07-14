@@ -17,6 +17,15 @@ services:
     networks:
       - seguradora-network
 
+  # Fraud API Mock (WireMock)
+  fraud-api-mock:
+    build: ./fraud-api-mock
+    container_name: seguradora-fraud-api
+    ports:
+      - "8081:8081"
+    networks:
+      - seguradora-network
+
   # Zookeeper for Kafka
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
@@ -48,59 +57,25 @@ services:
     networks:
       - seguradora-network
 
-  # Kafka UI (opcional, para visualização)
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: seguradora-kafka-ui
-    depends_on:
-      - kafka
-    ports:
-      - "8081:8080"
-    environment:
-      KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
-    networks:
-      - seguradora-network
-
-  # Fraud API Mock (WireMock)
-  fraud-api:
-    build:
-      context: ./fraud-api-mock
-      dockerfile: Dockerfile
-    container_name: seguradora-fraud-api
-    ports:
-      - "8081:8080"
-    networks:
-      - seguradora-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/__admin/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Microserviço de Pedidos
+  # Application
   ms-order:
     build: .
     container_name: seguradora-ms-order
     depends_on:
       - postgres
       - kafka
-      - fraud-api
+      - fraud-api-mock
     ports:
       - "8080:8080"
     environment:
+      SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/seguradora_orders
       SPRING_DATASOURCE_USERNAME: seguradora_user
       SPRING_DATASOURCE_PASSWORD: seguradora_pass
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      APP_FRAUD_API_URL: http://fraud-api:8080/api/v1
+      FRAUD_API_BASE_URL: http://fraud-api-mock:8081
     networks:
       - seguradora-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
 volumes:
   postgres_data:

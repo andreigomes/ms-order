@@ -24,7 +24,7 @@ class OrderTest {
         assertNotNull(order.getId());
         assertEquals(customerId, order.getCustomerId());
         assertEquals(insuranceType, order.getInsuranceType());
-        assertEquals(OrderStatus.PENDING, order.getStatus());
+        assertEquals(OrderStatus.RECEIVED, order.getStatus()); // Estado inicial correto
         assertEquals(amount, order.getAmount());
         assertEquals(description, order.getDescription());
         assertNotNull(order.getCreatedAt());
@@ -58,6 +58,8 @@ class OrderTest {
     void shouldApproveOrderWhenStatusIsPending() {
         // Given
         Order order = createValidOrder();
+        order.validate(); // RECEIVED -> VALIDATED
+        order.markAsPending(); // VALIDATED -> PENDING
 
         // When
         order.approve();
@@ -79,18 +81,19 @@ class OrderTest {
     }
 
     @Test
-    void shouldThrowExceptionWhenApprovingCompletedOrder() {
+    void shouldThrowExceptionWhenApprovingApprovedOrder() {
         // Given
         Order order = createValidOrder();
-        order.approve();
-        order.complete();
+        order.validate(); // RECEIVED -> VALIDATED
+        order.markAsPending(); // VALIDATED -> PENDING
+        order.approve(); // PENDING -> APPROVED
 
         // When & Then
         assertThrows(IllegalStateException.class, order::approve);
     }
 
     @Test
-    void shouldCancelOrderWhenStatusIsNotCompletedOrCancelled() {
+    void shouldCancelOrderWhenStatusAllowsCancellation() {
         // Given
         Order order = createValidOrder();
 
@@ -102,37 +105,38 @@ class OrderTest {
     }
 
     @Test
-    void shouldProcessOrderWhenStatusIsPending() {
+    void shouldValidateOrderWhenStatusIsReceived() {
         // Given
         Order order = createValidOrder();
 
         // When
-        order.process();
+        order.validate();
 
         // Then
-        assertEquals(OrderStatus.PROCESSING, order.getStatus());
+        assertEquals(OrderStatus.VALIDATED, order.getStatus());
     }
 
     @Test
-    void shouldCompleteOrderWhenStatusIsApproved() {
+    void shouldMarkAsPendingWhenStatusIsValidated() {
         // Given
         Order order = createValidOrder();
-        order.approve();
+        order.validate();
 
         // When
-        order.complete();
+        order.markAsPending();
 
         // Then
-        assertEquals(OrderStatus.COMPLETED, order.getStatus());
+        assertEquals(OrderStatus.PENDING, order.getStatus());
     }
 
     @Test
-    void shouldThrowExceptionWhenCompletingPendingOrder() {
+    void shouldThrowExceptionWhenValidatingNonReceivedOrder() {
         // Given
         Order order = createValidOrder();
+        order.validate();
 
         // When & Then
-        assertThrows(IllegalStateException.class, order::complete);
+        assertThrows(IllegalStateException.class, order::validate);
     }
 
     private Order createValidOrder() {

@@ -1,160 +1,152 @@
-# Microserviço de Pedidos - Seguradora
+# MS-ORDER - Microsserviço de Pedidos de Seguro
 
-Este microserviço foi desenvolvido seguindo os princípios de **Clean Architecture** e **SOLID**, implementando um sistema de gestão de pedidos para uma seguradora.
+Sistema para gerenciamento de solicitações de apólices de seguro, desenvolvido seguindo os princípios de Clean Architecture e Domain-Driven Design.
 
 ## 🏗️ Arquitetura
 
-O projeto foi estruturado seguindo Clean Architecture com as seguintes camadas:
+O projeto utiliza **Arquitetura Hexagonal (Ports & Adapters)** com as seguintes camadas:
 
-- **Core/Domain**: Entidades de negócio, value objects e regras de domínio
-- **Application**: Casos de uso e DTOs
-- **Infrastructure**: Adaptadores para banco de dados, mensageria e API REST
+### Core (Domínio)
+- **Entities**: `Order` - Entidade principal do domínio
+- **Value Objects**: `OrderStatus`, `InsuranceType` - Objetos de valor imutáveis
+- **Use Cases**: Casos de uso da aplicação (CreateOrder, GetOrder, etc.)
+- **Ports**: Interfaces que definem contratos (In/Out ports)
 
-### Princípios SOLID Aplicados
+### Infrastructure (Infraestrutura)
+- **Adapters In**: Controllers REST (`OrderController`)
+- **Adapters Out**: Repositórios JPA, clientes HTTP, publishers Kafka
+- **Configuration**: Configurações do Spring Boot, Kafka, banco de dados
 
-- **S** - Single Responsibility: Cada classe tem uma responsabilidade específica
-- **O** - Open/Closed: Extensível através de interfaces, fechado para modificação
-- **L** - Liskov Substitution: Implementações podem ser substituídas por suas interfaces
-- **I** - Interface Segregation: Interfaces específicas para cada responsabilidade
-- **D** - Dependency Inversion: Dependências invertidas através de portas e adaptadores
+## 🚀 Funcionalidades Implementadas
 
-## 🛠️ Tecnologias Utilizadas
+### 1. ✅ API REST para Solicitações de Apólice
+- **POST** `/api/v1/orders` - Criar nova solicitação
+- **GET** `/api/v1/orders/{id}` - Buscar por ID
+- **GET** `/api/v1/orders/customer/{customerId}` - Buscar por cliente
+- **PUT** `/api/v1/orders/{id}/payment` - Processar pagamento
+- **PUT** `/api/v1/orders/{id}/cancel` - Cancelar solicitação
 
-### Banco de Dados
-- **PostgreSQL**: Escolhido por sua robustez, ACID compliance e suporte a JSON
-- **H2**: Para testes automatizados
+### 2. ✅ Integração com API de Fraudes (Mock)
+- **Análise de Risco**: Consulta API externa para classificar risco do cliente
+- **Detecção de Bloqueio**: Verifica se cliente está na lista de bloqueados
+- **Regras de Negócio**:
+  - **REGULAR**: Perfil baixo risco, limites padrão de seguro
+  - **ALTO_RISCO**: Perfil alto risco, limites reduzidos
+  - **PREFERENCIAL**: Cliente premium, limites elevados
+  - **SEM_INFORMACAO**: Pouco histórico, limites conservadores
+  - **BLOCKED**: Cliente bloqueado → Status `REJECTED`
 
-### Mensageria
-- **Apache Kafka**: Para comunicação assíncrona e eventos de domínio
-- **Spring Kafka**: Integração nativa com Spring Boot
+### 3. ✅ Persistência em Banco de Dados
+- **H2** para desenvolvimento/testes
+- **PostgreSQL** para produção (via Docker)
+- **Flyway** para versionamento de schema
+- **JPA/Hibernate** para mapeamento objeto-relacional
 
-### Stack Principal
-- Java 17
-- Spring Boot 3.2.0
-- Spring Data JPA
-- MapStruct para mapeamento
-- Testcontainers para testes de integração
+### 4. ✅ Sistema de Eventos (Kafka)
+Publica eventos para outros serviços da cadeia:
+- `ORDER_CREATED` - Pedido criado (estado RECEIVED)
+- `ORDER_VALIDATED` - Passou na análise de fraudes
+- `ORDER_APPROVED` - Pagamento e subscrição aprovados
+- `ORDER_REJECTED` - Rejeitado por fraude, pagamento ou subscrição
+- `ORDER_CANCELLED` - Pedido cancelado pelo cliente
 
-## 🚀 Como Executar
+### 5. ✅ Estados da Solicitação
+Ciclo de vida baseado nas regras de negócio da seguradora:
+- **RECEIVED** → Estado inicial quando solicitação é criada
+- **VALIDATED** → Passou na análise de fraudes
+- **PENDING** → Aguarda pagamento e subscrição
+- **APPROVED** → Pronto para emissão da apólice
+- **REJECTED** → Rejeitado por fraude, pagamento ou subscrição
+- **CANCELLED** → Cancelado (exceto se já aprovado)
 
-### Pré-requisitos
-- Docker e Docker Compose
-- Java 17+ (apenas para desenvolvimento)
-- Maven 3.8+ (apenas para desenvolvimento)
+### 6. ✅ Processamento de Eventos Externos
+Consome eventos dos serviços de:
+- **Pagamento**: Status `APPROVED`/`REJECTED`
+- **Subscrição**: Status `APPROVED`/`REJECTED`
 
-### Executar com Docker Compose
+### 7. ✅ Simulador de Serviços Externos
+Para desenvolvimento e testes, simula:
+- **Processamento de Pagamento**: Simula aprovação/rejeição baseada em valor
+- **Análise de Subscrição**: Simula underwriting baseado em tipo e valor
+
+## 🛠️ Tecnologias e Justificativas
+
+### Spring Boot 3.2
+**Por quê?** Framework maduro e robusto para desenvolvimento de microsserviços, com excelente suporte para:
+- Injeção de dependências
+- Auto-configuração
+- Integração com múltiplas tecnologias
+- Observabilidade e métricas
+
+### Spring WebFlux
+**Por quê?** Programação reativa para melhor performance em I/O intensivo:
+- **Non-blocking I/O**: Melhor utilização de threads para chamadas externas (API de fraudes)
+- **Backpressure**: Controle de fluxo quando há muitas solicitações
+- **Escalabilidade**: Suporta mais conexões concorrentes com menos recursos
+
+### Apache Kafka
+**Por quê?** Sistema de messaging distribuído ideal para microsserviços:
+- **Event Sourcing**: Registro completo de todas as mudanças de estado
+- **Desacoplamento**: Serviços se comunicam via eventos sem conhecer uns aos outros
+- **Resiliência**: Garantia de entrega e durabilidade dos eventos
+- **Escalabilidade**: Suporta milhões de eventos por segundo
+
+### PostgreSQL + H2
+**Por quê?** 
+- **PostgreSQL**: Banco robusto para produção com suporte a JSON, transações ACID
+- **H2**: Banco em memória para testes rápidos e desenvolvimento local
+
+### Flyway
+**Por quê?** Versionamento de banco de dados:
+- **Controle de Versão**: Schema evolui junto com o código
+- **Rollback Seguro**: Possibilidade de reverter mudanças
+- **Deploy Automatizado**: Migrações aplicadas automaticamente
+
+### Docker + Docker Compose
+**Por quê?** Containerização para desenvolvimento e produção:
+- **Ambiente Consistente**: Mesmo ambiente em dev, test e prod
+- **Orquestração**: Kafka, PostgreSQL e aplicação sobem juntos
+- **Isolamento**: Dependências não conflitam entre projetos
+
+### WireMock (Fraud API)
+**Por quê?** Mock da API de fraudes externa:
+- **Desenvolvimento Independente**: Não depende da API real para desenvolvimento
+- **Testes Determinísticos**: Respostas controladas para cenários específicos
+- **Simulação de Falhas**: Testa comportamento em caso de indisponibilidade
+
+### Maven
+**Por quê?** Gerenciamento de dependências e build:
+- **Padrão da Indústria**: Amplamente adotado no ecossistema Java
+- **Gestão de Dependências**: Resolve conflitos de versões automaticamente
+- **Plugins**: Integração com Flyway, Docker, testes
+
+### JUnit 5 + AssertJ + Mockito
+**Por quê?** Stack de testes robusta:
+- **JUnit 5**: Framework de testes moderno com melhor organização
+- **AssertJ**: Assertions fluentes e legíveis
+- **Mockito**: Mocking para testes unitários isolados
+
+### Spring Boot Test + Testcontainers
+**Por quê?** Testes de integração realistas:
+- **Spring Boot Test**: Sobe contexto completo da aplicação
+- **Embedded Kafka**: Testa integração real com Kafka
+- **WebTestClient**: Testes de API reativa
+
+## 🐳 Execução com Docker
 
 ```bash
-# Clonar o repositório
-git clone <repository-url>
-cd ms-order
-
-# Construir e executar toda a infraestrutura
+# Subir todos os serviços
 docker-compose up -d
 
-# Verificar se os serviços estão rodando
-docker-compose ps
+# Verificar logs
+docker-compose logs -f ms-order
+
+# Parar serviços
+docker-compose down
 ```
-
-### Executar para Desenvolvimento
-
-```bash
-# Iniciar apenas a infraestrutura (PostgreSQL e Kafka)
-docker-compose up -d postgres kafka zookeeper
-
-# Executar a aplicação
-mvn spring-boot:run
-```
-
-## 📋 Funcionalidades
-
-### Gerenciamento de Pedidos
-- ✅ Criar pedidos de seguro
-- ✅ Consultar pedidos por ID
-- ✅ Listar pedidos por cliente
-- ✅ Listar pedidos por status
-- ✅ Atualizar status dos pedidos (aprovar, rejeitar, cancelar, processar, concluir)
-
-### Tipos de Seguro Suportados
-- AUTO (Seguro Automóvel)
-- HOME (Seguro Residencial)
-- LIFE (Seguro de Vida)
-- HEALTH (Seguro Saúde)
-- TRAVEL (Seguro Viagem)
-- BUSINESS (Seguro Empresarial)
-
-### Status dos Pedidos
-- PENDING (Pendente)
-- PROCESSING (Processando)
-- APPROVED (Aprovado)
-- REJECTED (Rejeitado)
-- CANCELLED (Cancelado)
-- COMPLETED (Concluído)
-
-## 🔌 APIs Disponíveis
-
-### Criar Pedido
-```http
-POST /api/v1/orders
-Content-Type: application/json
-
-{
-  "customerId": "CUST001",
-  "insuranceType": "AUTO",
-  "amount": 1500.00,
-  "description": "Seguro auto para veículo modelo 2023"
-}
-```
-
-### Consultar Pedido
-```http
-GET /api/v1/orders/{orderId}
-```
-
-### Listar Todos os Pedidos
-```http
-GET /api/v1/orders
-```
-
-### Listar Pedidos por Cliente
-```http
-GET /api/v1/orders/customer/{customerId}
-```
-
-### Listar Pedidos por Status
-```http
-GET /api/v1/orders/status/{status}
-```
-
-### Atualizar Status
-```http
-PUT /api/v1/orders/{orderId}/approve
-PUT /api/v1/orders/{orderId}/reject
-PUT /api/v1/orders/{orderId}/cancel
-PUT /api/v1/orders/{orderId}/process
-PUT /api/v1/orders/{orderId}/complete
-```
-
-## 📊 Monitoramento
-
-A aplicação inclui endpoints de monitoramento via Spring Actuator:
-
-- Health Check: `http://localhost:8080/actuator/health`
-- Métricas: `http://localhost:8080/actuator/metrics`
-- Info: `http://localhost:8080/actuator/info`
-
-## 📨 Eventos Kafka
-
-O sistema publica eventos nos seguintes tópicos:
-
-- **order-events**: Eventos de criação, aprovação, rejeição, cancelamento e conclusão de pedidos
-
-### Kafka UI
-Interface web disponível em: `http://localhost:8081`
 
 ## 🧪 Testes
 
-### Executar Testes
 ```bash
 # Todos os testes
 mvn test
@@ -164,68 +156,40 @@ mvn test -Dtest="*Test"
 
 # Apenas testes de integração
 mvn test -Dtest="*IntegrationTest"
+
+# Teste específico com Kafka
+mvn test -Dtest=OrderIntegrationWithRealKafkaTest
 ```
 
-### Cobertura de Testes
-- Testes unitários para entidades de domínio
-- Testes unitários para casos de uso
-- Testes de integração para APIs REST
-- Testes com Testcontainers para PostgreSQL e Kafka
+## 📊 Monitoramento
 
-## 🗄️ Banco de Dados
+### Actuator Endpoints
+- `/actuator/health` - Status da aplicação
+- `/actuator/metrics` - Métricas da aplicação
+- `/actuator/info` - Informações da aplicação
 
-### Estrutura das Tabelas
-
-```sql
-CREATE TABLE orders (
-    id UUID PRIMARY KEY,
-    customer_id VARCHAR(255) NOT NULL,
-    insurance_type VARCHAR(50) NOT NULL,
-    status VARCHAR(20) NOT NULL,
-    amount DECIMAL(19,2) NOT NULL,
-    description TEXT,
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL
-);
-```
-
-### Configuração do Banco
-- Host: localhost:5432
-- Database: seguradora_orders
-- Username: seguradora_user
-- Password: seguradora_pass
+### Logs Estruturados
+- **SLF4J + Logback**: Logs estruturados em JSON para melhor observabilidade
+- **Correlation ID**: Rastreamento de requisições através dos serviços
+- **Levels**: DEBUG para desenvolvimento, INFO para produção
 
 ## 🔧 Configuração
 
+### Profiles
+- **default**: Desenvolvimento local com H2
+- **docker**: Produção com PostgreSQL
+- **test**: Testes com H2 e mocks
+
 ### Variáveis de Ambiente
+```properties
+# Banco de dados
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/orders
+SPRING_DATASOURCE_USERNAME=orders_user
+SPRING_DATASOURCE_PASSWORD=orders_pass
 
-```env
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/seguradora_orders
-SPRING_DATASOURCE_USERNAME=seguradora_user
-SPRING_DATASOURCE_PASSWORD=seguradora_pass
+# Kafka
 SPRING_KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+
+# API de Fraudes
+FRAUD_API_BASE_URL=http://fraud-api:8080
 ```
-
-## 📦 Build e Deploy
-
-### Build da Aplicação
-```bash
-mvn clean package
-```
-
-### Build da Imagem Docker
-```bash
-docker build -t seguradora/ms-order:latest .
-```
-
-## 🤝 Contribuição
-
-1. Fork do projeto
-2. Criar branch para feature (`git checkout -b feature/nova-funcionalidade`)
-3. Commit das mudanças (`git commit -am 'Adiciona nova funcionalidade'`)
-4. Push para branch (`git push origin feature/nova-funcionalidade`)
-5. Criar Pull Request
-
-## 📄 Licença
-
-Este projeto está sob a licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
