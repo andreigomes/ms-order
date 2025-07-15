@@ -22,7 +22,7 @@ public class TestKafkaConfig {
         return new OrderEventPublisherPort() {
             @Override
             public void publishOrderCreated(Order order) {
-                logger.info("Mock: Publishing ORDER_CREATED event for order: {}", order.getId());
+                logger.info("Mock: Publishing ORDER_RECEIVED event for order: {}", order.getId());
             }
 
             @Override

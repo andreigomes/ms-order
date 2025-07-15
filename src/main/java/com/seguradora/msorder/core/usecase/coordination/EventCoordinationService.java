@@ -48,6 +48,11 @@ public class EventCoordinationService {
             Order order = orderRepository.findById(orderIdVO)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
 
+            if (order.getStatus() != OrderStatus.PENDING) {
+                logger.warn("Pedido {} não está em PENDING (atual: {}). Ignorando aprovação de pagamento.", orderId, order.getStatus());
+                return;
+            }
+
             // Aprovar pagamento e verificar se pode finalizar
             boolean canFinalize = order.approvePayment();
             orderRepository.save(order);
@@ -117,6 +122,11 @@ public class EventCoordinationService {
             OrderId orderIdVO = OrderId.of(orderId);
             Order order = orderRepository.findById(orderIdVO)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
+
+            if (order.getStatus() != OrderStatus.PENDING) {
+                logger.warn("Pedido {} não está em PENDING (atual: {}). Ignorando aprovação de subscrição.", orderId, order.getStatus());
+                return;
+            }
 
             // Aprovar subscrição e verificar se pode finalizar
             boolean canFinalize = order.approveSubscription();

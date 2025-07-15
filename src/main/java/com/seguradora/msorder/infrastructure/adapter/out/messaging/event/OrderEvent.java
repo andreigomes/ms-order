@@ -23,7 +23,7 @@ public record OrderEvent(
     public static OrderEvent orderCreated(String orderId, String customerId, InsuranceType insuranceType,
                                          BigDecimal amount, String description) {
         return new OrderEvent(orderId, customerId, insuranceType, OrderStatus.RECEIVED,
-                             amount, description, LocalDateTime.now(), "ORDER_CREATED");
+                             amount, description, LocalDateTime.now(), "ORDER_RECEIVED");
     }
 
     public static OrderEvent orderValidated(String orderId, String customerId, InsuranceType insuranceType,

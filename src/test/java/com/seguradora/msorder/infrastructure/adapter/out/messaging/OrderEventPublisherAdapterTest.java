@@ -65,7 +65,7 @@ class OrderEventPublisherAdapterTest {
         OrderEvent capturedEvent = eventCaptor.getValue();
         assertThat(capturedEvent.orderId()).isEqualTo(mockOrder.getId().getValue().toString());
         assertThat(capturedEvent.customerId()).isEqualTo(customerId.getValue());
-        assertThat(capturedEvent.eventType()).isEqualTo("ORDER_CREATED");
+        assertThat(capturedEvent.eventType()).isEqualTo("ORDER_RECEIVED");
     }
 
     @Test

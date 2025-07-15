@@ -34,7 +34,7 @@ public class OrderEventPublisherAdapter implements OrderEventPublisherPort {
             order.getDescription()
         );
         publishEvent(event);
-        logger.info("Published ORDER_CREATED event for order: {}", order.getId());
+        logger.info("Published ORDER_RECEIVED event for order: {}", order.getId());
     }
 
     @Override
