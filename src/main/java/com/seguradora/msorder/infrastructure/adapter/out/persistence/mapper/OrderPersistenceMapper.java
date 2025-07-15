@@ -31,6 +31,8 @@ public interface OrderPersistenceMapper {
     @Mapping(target = "updatedAt", source = "updatedAt")
     @Mapping(target = "finishedAt", source = "finishedAt")
     @Mapping(target = "history", expression = "java(mapHistoryToJson(order.getHistory()))")
+    @Mapping(target = "paymentApproved", source = "paymentApproved")
+    @Mapping(target = "subscriptionApproved", source = "subscriptionApproved")
     OrderJpaEntity toJpaEntity(Order order);
 
     default Order restoreDomain(OrderJpaEntity entity) {
@@ -50,7 +52,9 @@ public interface OrderPersistenceMapper {
             entity.getCreatedAt(),
             entity.getUpdatedAt(),
             entity.getFinishedAt(),
-            OrderHistory.fromJson(entity.getHistory())
+            OrderHistory.fromJson(entity.getHistory()),
+            entity.getPaymentApproved(),
+            entity.getSubscriptionApproved()
         );
     }
 

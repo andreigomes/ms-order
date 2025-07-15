@@ -28,5 +28,14 @@ public record OrderResponse(
     String description,
     LocalDateTime createdAt,
     LocalDateTime updatedAt,
-    LocalDateTime finishedAt
-) {}
+    LocalDateTime finishedAt,
+    List<OrderHistoryResponse> history
+) {
+    /**
+     * DTO para representar o histórico de mudanças de status
+     */
+    public record OrderHistoryResponse(
+        OrderStatus status,
+        LocalDateTime timestamp
+    ) {}
+}

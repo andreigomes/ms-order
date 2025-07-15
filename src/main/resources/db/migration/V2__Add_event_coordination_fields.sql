@@ -1,10 +1,10 @@
--- Adicionar campos para coordenação de eventos
--- Estes campos podem ser usados para rastreamento de eventos e correlação
+-- Migration para adicionar campos de coordenação de eventos
+-- V2__Add_event_coordination_fields.sql
 
-ALTER TABLE orders ADD COLUMN IF NOT EXISTS risk_level VARCHAR(50);
-ALTER TABLE orders ADD COLUMN IF NOT EXISTS fraud_score DECIMAL(5,2);
-ALTER TABLE orders ADD COLUMN IF NOT EXISTS validation_reason TEXT;
-ALTER TABLE orders ADD COLUMN IF NOT EXISTS last_event_timestamp TIMESTAMP;
+ALTER TABLE orders
+ADD COLUMN payment_approved BOOLEAN,
+ADD COLUMN subscription_approved BOOLEAN;
 
--- Criar índice para o risk_level
-CREATE INDEX IF NOT EXISTS idx_orders_risk_level ON orders(risk_level);
+-- Comentários para documentação
+COMMENT ON COLUMN orders.payment_approved IS 'Status de aprovação do pagamento: null=não processado, true=aprovado, false=rejeitado';
+COMMENT ON COLUMN orders.subscription_approved IS 'Status de aprovação da subscrição: null=não processado, true=aprovado, false=rejeitado';

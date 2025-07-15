@@ -1,4 +1,4 @@
-che# MS-ORDER - Microsserviço de Pedidos de Seguro
+# MS-ORDER - Microsserviço de Pedidos de Seguro
 
 Sistema para gerenciamento de solicitações de apólices de seguro, desenvolvido seguindo os princípios de Clean Architecture e Domain-Driven Design.
 
@@ -40,13 +40,17 @@ O projeto utiliza **Arquitetura Hexagonal (Ports & Adapters)** com as seguintes 
 - **Rejeição Direta**: Para valores acima do limite permitido
 
 ### 4. ✅ Persistência em Banco de Dados
-- **H2** para desenvolvimento/testes
 - **PostgreSQL** para produção (via Docker)
 - **Flyway** para versionamento de schema
 - **JPA/Hibernate** para mapeamento objeto-relacional
+- **Testcontainers** para testes de integração
 
 ### 5. ✅ Sistema de Eventos Kafka
-**Produção de Eventos** (tópico: `order-events`):
+
+#### 📤 Tópicos de Produção (Outbound)
+**Tópico**: `order-events`
+
+Eventos publicados pelo ms-order:
 - `ORDER_CREATED` - Pedido criado (estado RECEIVED)
 - `ORDER_VALIDATED` - Passou na análise de fraudes
 - `ORDER_PENDING` - Aguardando aprovação de pagamento e subscrição
@@ -54,9 +58,64 @@ O projeto utiliza **Arquitetura Hexagonal (Ports & Adapters)** com as seguintes 
 - `ORDER_REJECTED` - Rejeitado por qualquer motivo
 - `ORDER_CANCELLED` - Cancelado pelo cliente
 
-**Consumo de Eventos**:
-- `payment-events` - Eventos de processamento de pagamento
-- `subscription-events` - Eventos de análise de subscrição/underwriting
+**Exemplo de mensagem produzida**:
+```json
+{
+  "eventType": "ORDER_CREATED",
+  "orderId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "customerId": "12345",
+  "status": "RECEIVED",
+  "timestamp": "2025-07-14T10:30:00Z",
+  "orderDetails": {
+    "category": "AUTO",
+    "insuredAmount": 150000.00,
+    "riskLevel": "REGULAR"
+  }
+}
+```
+
+#### 📥 Tópicos de Consumo (Inbound)
+
+**Tópico**: `payment-events`  
+**Consumer Group**: `order-service-payment-group`
+
+Eventos consumidos de serviços de pagamento:
+```json
+{
+  "eventType": "PAYMENT_PROCESSED",
+  "orderId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "status": "APPROVED",
+  "reason": "Payment processed successfully",
+  "timestamp": "2025-07-14T10:32:15Z",
+  "paymentDetails": {
+    "paymentId": "pay_1234567890",
+    "paymentMethod": "CREDIT_CARD",
+    "amount": 1200.50,
+    "transactionId": "txn_abcd1234",
+    "processedAt": "2025-07-14T10:32:10Z"
+  }
+}
+```
+
+**Tópico**: `subscription-events`  
+**Consumer Group**: `order-service-subscription-group`
+
+Eventos consumidos de serviços de subscrição:
+```json
+{
+  "eventType": "SUBSCRIPTION_ANALYZED",
+  "orderId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "status": "APPROVED",
+  "reason": "Risk analysis completed - approved",
+  "timestamp": "2025-07-14T10:33:20Z",
+  "subscriptionDetails": {
+    "subscriptionId": "sub_9876543210",
+    "analyst": "John Doe",
+    "analysisDate": "2025-07-14T10:33:15Z",
+    "comments": "Low risk customer with good payment history"
+  }
+}
+```
 
 ### 6. ✅ Simulador de Serviços Externos
 **Simulação de Pagamento**:
@@ -79,18 +138,20 @@ O projeto utiliza **Arquitetura Hexagonal (Ports & Adapters)** com as seguintes 
 ### Backend
 - **Java 17** - Linguagem principal
 - **Spring Boot 3.2** - Framework principal
-- **Spring WebFlux** - Para clientes HTTP assíncronos
+- **Spring WebFlux** - Para clientes HTTP assíncronos (consumo da API de fraudes)
 - **Spring Data JPA** - Persistência
-- **Spring Kafka** - Mensageria
+- **Spring Kafka** - Mensageria assíncrona para coordenação de eventos
 - **Flyway** - Migrations de banco
 
 ### Banco de Dados
-- **H2** - Desenvolvimento/testes
-- **PostgreSQL** - Produção
+- **PostgreSQL** - Banco principal (produção e testes)
 
 ### Mensageria
-- **Apache Kafka** - Sistema de eventos
+- **Apache Kafka** - Sistema de eventos para coordenação entre microserviços
 - **Kafka Connect** - Integração de dados
+
+### Mock de Serviços Externos
+- **WireMock** - Simulação da API de fraudes externa
 
 ### Infraestrutura
 - **Docker & Docker Compose** - Containerização
@@ -98,7 +159,7 @@ O projeto utiliza **Arquitetura Hexagonal (Ports & Adapters)** com as seguintes 
 
 ### Qualidade
 - **JUnit 5** - Testes unitários
-- **Testcontainers** - Testes de integração
+- **Testcontainers** - Testes de integração com PostgreSQL real
 - **EmbeddedKafka** - Testes com Kafka real
 
 ## 🔄 Fluxo de Negócio

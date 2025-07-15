@@ -1,59 +1,44 @@
 package com.seguradora.msorder.infrastructure.adapter.in.messaging;
 
-import com.seguradora.msorder.core.port.in.ProcessPaymentEventUseCase;
-import com.seguradora.msorder.infrastructure.adapter.in.messaging.event.PaymentEvent;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.seguradora.msorder.application.dto.PaymentEventData;
+import com.seguradora.msorder.core.usecase.coordination.EventCoordinationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.support.Acknowledgment;
-import org.springframework.kafka.support.KafkaHeaders;
-import org.springframework.messaging.handler.annotation.Header;
-import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 
 /**
- * Consumidor de eventos de pagamento
- * Processa eventos vindos do serviço de pagamentos
+ * Consumer responsável por receber eventos de pagamento
  */
 @Component
 public class PaymentEventConsumer {
 
-    private static final Logger log = LoggerFactory.getLogger(PaymentEventConsumer.class);
+    private static final Logger logger = LoggerFactory.getLogger(PaymentEventConsumer.class);
 
-    private final ProcessPaymentEventUseCase processPaymentEventUseCase;
+    private final EventCoordinationService coordinationService;
+    private final ObjectMapper objectMapper;
 
-    public PaymentEventConsumer(ProcessPaymentEventUseCase processPaymentEventUseCase) {
-        this.processPaymentEventUseCase = processPaymentEventUseCase;
+    public PaymentEventConsumer(EventCoordinationService coordinationService, ObjectMapper objectMapper) {
+        this.coordinationService = coordinationService;
+        this.objectMapper = objectMapper;
     }
 
-    @KafkaListener(
-        topics = "payment-events",
-        groupId = "order-service-payment-group",
-        containerFactory = "kafkaListenerContainerFactory"
-    )
-    public void handlePaymentEvent(
-            @Payload PaymentEvent paymentEvent,
-            @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
-            @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
-            @Header(KafkaHeaders.OFFSET) long offset,
-            Acknowledgment acknowledgment) {
-
+    @KafkaListener(topics = "payment-events", groupId = "order-service-payment-group")
+    public void handlePaymentEvent(String message) {
         try {
-            log.info("🔔 Received payment event: {} from topic: {}, partition: {}, offset: {}",
-                    paymentEvent, topic, partition, offset);
+            logger.info("Recebido evento de pagamento: {}", message);
 
-            processPaymentEventUseCase.processPaymentEvent(paymentEvent);
+            PaymentEventData eventData = objectMapper.readValue(message, PaymentEventData.class);
 
-            // Confirma o processamento da mensagem
-            acknowledgment.acknowledge();
-
-            log.info("✅ Payment event processed successfully for order: {}", paymentEvent.orderId());
+            if ("APPROVED".equals(eventData.getStatus())) {
+                coordinationService.processPaymentApproval(eventData.getOrderId());
+            } else if ("REJECTED".equals(eventData.getStatus())) {
+                coordinationService.processPaymentRejection(eventData.getOrderId(), eventData.getReason());
+            }
 
         } catch (Exception e) {
-            log.error("❌ Error processing payment event for order: {} - Error: {}",
-                    paymentEvent.orderId(), e.getMessage(), e);
-            // Não confirma a mensagem em caso de erro para tentar reprocessar
-            throw e;
+            logger.error("Erro ao processar evento de pagamento: {}", message, e);
         }
     }
 }

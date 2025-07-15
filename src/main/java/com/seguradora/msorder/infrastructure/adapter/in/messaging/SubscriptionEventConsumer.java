@@ -1,59 +1,44 @@
 package com.seguradora.msorder.infrastructure.adapter.in.messaging;
 
-import com.seguradora.msorder.core.port.in.ProcessSubscriptionEventUseCase;
-import com.seguradora.msorder.infrastructure.adapter.in.messaging.event.SubscriptionEvent;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.seguradora.msorder.application.dto.SubscriptionEventData;
+import com.seguradora.msorder.core.usecase.coordination.EventCoordinationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.support.Acknowledgment;
-import org.springframework.kafka.support.KafkaHeaders;
-import org.springframework.messaging.handler.annotation.Header;
-import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 
 /**
- * Consumidor de eventos de subscrição
- * Processa eventos vindos do serviço de subscrição/underwriting
+ * Consumer responsável por receber eventos de subscrição
  */
 @Component
 public class SubscriptionEventConsumer {
 
-    private static final Logger log = LoggerFactory.getLogger(SubscriptionEventConsumer.class);
+    private static final Logger logger = LoggerFactory.getLogger(SubscriptionEventConsumer.class);
 
-    private final ProcessSubscriptionEventUseCase processSubscriptionEventUseCase;
+    private final EventCoordinationService coordinationService;
+    private final ObjectMapper objectMapper;
 
-    public SubscriptionEventConsumer(ProcessSubscriptionEventUseCase processSubscriptionEventUseCase) {
-        this.processSubscriptionEventUseCase = processSubscriptionEventUseCase;
+    public SubscriptionEventConsumer(EventCoordinationService coordinationService, ObjectMapper objectMapper) {
+        this.coordinationService = coordinationService;
+        this.objectMapper = objectMapper;
     }
 
-    @KafkaListener(
-        topics = "subscription-events",
-        groupId = "order-service-subscription-group",
-        containerFactory = "kafkaListenerContainerFactory"
-    )
-    public void handleSubscriptionEvent(
-            @Payload SubscriptionEvent subscriptionEvent,
-            @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
-            @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
-            @Header(KafkaHeaders.OFFSET) long offset,
-            Acknowledgment acknowledgment) {
-
+    @KafkaListener(topics = "subscription-events", groupId = "order-service-subscription-group")
+    public void handleSubscriptionEvent(String message) {
         try {
-            log.info("🔔 Received subscription event: {} from topic: {}, partition: {}, offset: {}",
-                    subscriptionEvent, topic, partition, offset);
+            logger.info("Recebido evento de subscrição: {}", message);
 
-            processSubscriptionEventUseCase.processSubscriptionEvent(subscriptionEvent);
+            SubscriptionEventData eventData = objectMapper.readValue(message, SubscriptionEventData.class);
 
-            // Confirma o processamento da mensagem
-            acknowledgment.acknowledge();
-
-            log.info("✅ Subscription event processed successfully for order: {}", subscriptionEvent.orderId());
+            if ("APPROVED".equals(eventData.getStatus())) {
+                coordinationService.processSubscriptionApproval(eventData.getOrderId());
+            } else if ("REJECTED".equals(eventData.getStatus())) {
+                coordinationService.processSubscriptionRejection(eventData.getOrderId(), eventData.getReason());
+            }
 
         } catch (Exception e) {
-            log.error("❌ Error processing subscription event for order: {} - Error: {}",
-                    subscriptionEvent.orderId(), e.getMessage(), e);
-            // Não confirma a mensagem em caso de erro para tentar reprocessar
-            throw e;
+            logger.error("Erro ao processar evento de subscrição: {}", message, e);
         }
     }
 }

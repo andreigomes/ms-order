@@ -32,7 +32,13 @@ public class FraudAnalysisAdapter implements FraudAnalysisPort {
                 .bodyToMono(FraudAnalysisResponse.class)
                 .block();
 
-            return response != null ? response.getRiskLevel() : "REGULAR";
+            // Usar classification primeiro, depois riskLevel para compatibilidade
+            if (response != null) {
+                return response.getClassification() != null ?
+                       response.getClassification() :
+                       response.getRiskLevel();
+            }
+            return "REGULAR";
         } catch (Exception e) {
             // Em caso de erro, assumimos risco regular
             return "REGULAR";

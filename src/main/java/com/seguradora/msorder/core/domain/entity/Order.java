@@ -29,6 +29,10 @@ public class Order {
     private LocalDateTime finishedAt;
     private OrderHistory history;
 
+    // Campos para coordenação de eventos
+    private Boolean paymentApproved = null; // null = não processado, true = aprovado, false = rejeitado
+    private Boolean subscriptionApproved = null; // null = não processado, true = aprovado, false = rejeitado
+
     // Construtor privado para garantir criação através de factory methods
     private Order() {}
 
@@ -65,7 +69,7 @@ public class Order {
                                BigDecimal totalMonthlyPremiumAmount, BigDecimal insuredAmount,
                                Coverages coverages, Assistances assistances, OrderStatus status,
                                String description, LocalDateTime createdAt, LocalDateTime updatedAt,
-                               LocalDateTime finishedAt, OrderHistory history) {
+                               LocalDateTime finishedAt, OrderHistory history, Boolean paymentApproved, Boolean subscriptionApproved) {
         Order order = new Order();
         order.id = id;
         order.customerId = customerId;
@@ -83,6 +87,8 @@ public class Order {
         order.updatedAt = updatedAt;
         order.finishedAt = finishedAt;
         order.history = history != null ? history : OrderHistory.empty();
+        order.paymentApproved = paymentApproved;
+        order.subscriptionApproved = subscriptionApproved;
 
         return order;
     }
@@ -201,6 +207,85 @@ public class Order {
         updateStatus(OrderStatus.CANCELLED, reason);
     }
 
+    /**
+     * Registra aprovação de pagamento e verifica se pode finalizar
+     */
+    public boolean approvePayment() {
+        if (status != OrderStatus.PENDING) {
+            throw new IllegalStateException("Can only approve payment for orders in PENDING state");
+        }
+
+        this.paymentApproved = true;
+        this.updatedAt = LocalDateTime.now();
+        this.history = this.history.addEntry(status, status, "Pagamento aprovado");
+
+        return canBeFinalized();
+    }
+
+    /**
+     * Registra rejeição de pagamento
+     */
+    public void rejectPayment(String reason) {
+        if (status != OrderStatus.PENDING) {
+            throw new IllegalStateException("Can only reject payment for orders in PENDING state");
+        }
+
+        this.paymentApproved = false;
+        reject("Pagamento rejeitado: " + reason);
+    }
+
+    /**
+     * Registra aprovação de subscrição e verifica se pode finalizar
+     */
+    public boolean approveSubscription() {
+        if (status != OrderStatus.PENDING) {
+            throw new IllegalStateException("Can only approve subscription for orders in PENDING state");
+        }
+
+        this.subscriptionApproved = true;
+        this.updatedAt = LocalDateTime.now();
+        this.history = this.history.addEntry(status, status, "Subscrição aprovada");
+
+        return canBeFinalized();
+    }
+
+    /**
+     * Registra rejeição de subscrição
+     */
+    public void rejectSubscription(String reason) {
+        if (status != OrderStatus.PENDING) {
+            throw new IllegalStateException("Can only reject subscription for orders in PENDING state");
+        }
+
+        this.subscriptionApproved = false;
+        reject("Subscrição rejeitada: " + reason);
+    }
+
+    /**
+     * Verifica se o pedido pode ser finalizado (ambos pagamento e subscrição aprovados)
+     */
+    public boolean canBeFinalized() {
+        return Boolean.TRUE.equals(paymentApproved) && Boolean.TRUE.equals(subscriptionApproved);
+    }
+
+    /**
+     * Verifica se algum processo foi rejeitado
+     */
+    public boolean hasAnyRejection() {
+        return Boolean.FALSE.equals(paymentApproved) || Boolean.FALSE.equals(subscriptionApproved);
+    }
+
+    /**
+     * Finaliza o pedido quando ambos pagamento e subscrição foram aprovados
+     */
+    public void finalizeApproval() {
+        if (!canBeFinalized()) {
+            throw new IllegalStateException("Cannot finalize order - payment and subscription must both be approved");
+        }
+
+        updateStatus(OrderStatus.APPROVED, "Pagamento e subscrição aprovados - pedido finalizado");
+    }
+
     // Getters
     public OrderId getId() { return id; }
     public CustomerId getCustomerId() { return customerId; }
@@ -218,6 +303,8 @@ public class Order {
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public LocalDateTime getFinishedAt() { return finishedAt; }
     public OrderHistory getHistory() { return history; }
+    public Boolean getPaymentApproved() { return paymentApproved; }
+    public Boolean getSubscriptionApproved() { return subscriptionApproved; }
 
     @Override
     public boolean equals(Object o) {

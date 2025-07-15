@@ -41,5 +41,19 @@ public interface OrderMapper {
     @Mapping(target = "createdAt", source = "createdAt")
     @Mapping(target = "updatedAt", source = "updatedAt")
     @Mapping(target = "finishedAt", source = "finishedAt")
+    @Mapping(target = "history", expression = "java(mapHistory(order))")
     OrderResponse toResponse(Order order);
+
+    default java.util.List<OrderResponse.OrderHistoryResponse> mapHistory(Order order) {
+        if (order.getHistory() == null || order.getHistory().getEntries() == null) {
+            return java.util.Collections.emptyList();
+        }
+
+        return order.getHistory().getEntries().stream()
+            .map(entry -> new OrderResponse.OrderHistoryResponse(
+                entry.getToStatus(),
+                entry.getTimestamp()
+            ))
+            .toList();
+    }
 }

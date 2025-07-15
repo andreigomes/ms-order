@@ -46,12 +46,14 @@ class InsuranceTypeTest {
         InsuranceType[] values = InsuranceType.values();
 
         // Then
-        assertThat(values).hasSize(4);
+        assertThat(values).hasSize(6);
         assertThat(values).contains(
             InsuranceType.AUTO,
             InsuranceType.HOME,
             InsuranceType.LIFE,
-            InsuranceType.TRAVEL
+            InsuranceType.HEALTH,
+            InsuranceType.TRAVEL,
+            InsuranceType.BUSINESS
         );
     }
 }

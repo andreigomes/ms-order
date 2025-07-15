@@ -100,8 +100,8 @@ class OrderMapperTest {
             PaymentMethod.CREDIT_CARD,
             new BigDecimal("500.00"),
             new BigDecimal("50000.00"),
-            Map.of(),
-            List.of(),
+            Map.of("basic", new BigDecimal("1000.00")), // Não pode ser vazio
+            List.of("Basic assistance"), // Não pode ser vazio
             "Test order"
         );
 
@@ -110,8 +110,8 @@ class OrderMapperTest {
 
         // Then
         assertThat(command).isNotNull();
-        assertThat(command.coverages().getCoverageMap()).isEmpty();
-        assertThat(command.assistances().getAssistanceList()).isEmpty();
+        assertThat(command.coverages().getCoverageMap()).hasSize(1);
+        assertThat(command.assistances().getAssistanceList()).hasSize(1);
     }
 
     @Test
@@ -125,8 +125,8 @@ class OrderMapperTest {
             PaymentMethod.CREDIT_CARD,
             new BigDecimal("500.00"),
             new BigDecimal("50000.00"),
-            null,
-            null,
+            Map.of("basic", new BigDecimal("1000.00")), // Valores obrigatórios
+            List.of("Basic assistance"), // Valores obrigatórios
             "Test order"
         );
 

@@ -77,6 +77,13 @@ public class OrderJpaEntity {
     @Column(name = "history")
     private List<Map<String, Object>> history;
 
+    // Campos para coordenação de eventos
+    @Column(name = "payment_approved")
+    private Boolean paymentApproved;
+
+    @Column(name = "subscription_approved")
+    private Boolean subscriptionApproved;
+
     // Construtor padrão
     public OrderJpaEntity() {}
 
@@ -87,7 +94,8 @@ public class OrderJpaEntity {
                          Map<String, BigDecimal> coverages, List<String> assistances,
                          OrderStatus status, String description, LocalDateTime createdAt,
                          LocalDateTime updatedAt, LocalDateTime finishedAt,
-                         List<Map<String, Object>> history) {
+                         List<Map<String, Object>> history, Boolean paymentApproved,
+                         Boolean subscriptionApproved) {
         this.id = id;
         this.customerId = customerId;
         this.productId = productId;
@@ -104,6 +112,8 @@ public class OrderJpaEntity {
         this.updatedAt = updatedAt;
         this.finishedAt = finishedAt;
         this.history = history;
+        this.paymentApproved = paymentApproved;
+        this.subscriptionApproved = subscriptionApproved;
     }
 
     // Getters e Setters
@@ -154,4 +164,10 @@ public class OrderJpaEntity {
 
     public List<Map<String, Object>> getHistory() { return history; }
     public void setHistory(List<Map<String, Object>> history) { this.history = history; }
+
+    public Boolean getPaymentApproved() { return paymentApproved; }
+    public void setPaymentApproved(Boolean paymentApproved) { this.paymentApproved = paymentApproved; }
+
+    public Boolean getSubscriptionApproved() { return subscriptionApproved; }
+    public void setSubscriptionApproved(Boolean subscriptionApproved) { this.subscriptionApproved = subscriptionApproved; }
 }

@@ -105,7 +105,7 @@ public class CreateOrderService implements CreateOrderUseCase {
     private void processOrderValidationFullyAsync(Order order, CreateOrderCommand command) {
         try {
             // Análise de fraudes
-            RiskLevel riskLevel = performFraudAnalysisWithFallback(command);
+            RiskLevel riskLevel = performFraudAnalysisWithFallback(order, command);
 
             // Aplicar regras de validação e atualizar status
             Order processedOrder = applyValidationRulesOptimized(order, riskLevel);
@@ -124,9 +124,10 @@ public class CreateOrderService implements CreateOrderUseCase {
     /**
      * Análise de fraudes com fallback para melhor resiliência
      */
-    private RiskLevel performFraudAnalysisWithFallback(CreateOrderCommand command) {
+    private RiskLevel performFraudAnalysisWithFallback(Order order, CreateOrderCommand command) {
         try {
             FraudAnalysisRequest fraudRequest = new FraudAnalysisRequest(
+                order.getId().getValue().toString(),
                 command.customerId().getValue(),
                 command.insuredAmount(),
                 command.category().name(),

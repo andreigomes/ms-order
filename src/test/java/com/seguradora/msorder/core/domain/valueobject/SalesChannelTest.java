@@ -46,12 +46,14 @@ class SalesChannelTest {
         SalesChannel[] values = SalesChannel.values();
 
         // Then
-        assertThat(values).hasSize(4);
+        assertThat(values).hasSize(6);
         assertThat(values).contains(
-            SalesChannel.WEB_SITE,
             SalesChannel.MOBILE,
+            SalesChannel.WHATSAPP,
+            SalesChannel.WEB_SITE,
+            SalesChannel.PHONE,
             SalesChannel.BRANCH,
-            SalesChannel.PHONE
+            SalesChannel.PARTNER
         );
     }
 }

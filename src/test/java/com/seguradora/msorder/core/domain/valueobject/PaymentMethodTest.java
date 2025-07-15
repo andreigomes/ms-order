@@ -43,9 +43,11 @@ class PaymentMethodTest {
         PaymentMethod[] values = PaymentMethod.values();
 
         // Then
-        assertThat(values).hasSize(3);
+        assertThat(values).hasSize(5);
         assertThat(values).contains(
             PaymentMethod.CREDIT_CARD,
+            PaymentMethod.DEBIT_ACCOUNT,
+            PaymentMethod.BOLETO,
             PaymentMethod.PIX,
             PaymentMethod.BANK_TRANSFER
         );

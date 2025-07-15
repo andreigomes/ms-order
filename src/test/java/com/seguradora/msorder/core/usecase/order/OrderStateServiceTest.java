@@ -66,7 +66,9 @@ class OrderStateServiceTest {
                 Assistances.of(List.of("24h assistance")),
                 "Test order"
         );
-        pendingOrder.updateStatus(OrderStatus.PENDING);
+        // Seguir sequência correta de estados: RECEIVED → VALIDATED → PENDING
+        pendingOrder.validate();
+        pendingOrder.markAsPending();
 
         when(orderRepositoryPort.findById(any(OrderId.class))).thenReturn(java.util.Optional.of(pendingOrder));
         when(orderRepositoryPort.save(any(Order.class))).thenReturn(pendingOrder);
@@ -97,7 +99,9 @@ class OrderStateServiceTest {
                 Assistances.of(List.of("24h assistance")),
                 "Test order"
         );
-        pendingOrder.updateStatus(OrderStatus.PENDING);
+        // Seguir sequência correta de estados: RECEIVED → VALIDATED → PENDING
+        pendingOrder.validate();
+        pendingOrder.markAsPending();
 
         when(orderRepositoryPort.findById(any(OrderId.class))).thenReturn(java.util.Optional.of(pendingOrder));
         when(orderRepositoryPort.save(any(Order.class))).thenReturn(pendingOrder);
@@ -133,11 +137,12 @@ class OrderStateServiceTest {
     @Test
     void shouldThrowExceptionWhenOrderNotFound() {
         // Given
+        OrderId validOrderId = OrderId.of("550e8400-e29b-41d4-a716-446655440000"); // UUID válido
         when(orderRepositoryPort.findById(any(OrderId.class))).thenReturn(java.util.Optional.empty());
 
         // When & Then
         assertThatThrownBy(() -> updateOrderStatusService.approveOrder(
-                new UpdateOrderStatusUseCase.ApproveOrderCommand(OrderId.of("999"))
+                new UpdateOrderStatusUseCase.ApproveOrderCommand(validOrderId)
         ))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Order not found");
