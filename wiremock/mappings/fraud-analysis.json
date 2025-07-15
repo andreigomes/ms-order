@@ -1,0 +1,176 @@
+{
+  "mappings": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "/api/v1/fraud/analyze",
+        "bodyPatterns": [
+          {
+            "matchesJsonPath": "$.customerId",
+            "equalTo": "1001"
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "orderId": "e053467f-bd48-4fd2-9481-75bd4e88ee40",
+          "customerId": "1001",
+          "analyzedAt": "2024-05-10T12:00:00Z",
+          "classification": "PREFERENTIAL",
+          "occurrences": [
+            {
+              "id": "pref-001",
+              "productId": 78900001,
+              "type": "CLEAN",
+              "description": "Clean customer with excellent history",
+              "createdAt": "2024-05-10T12:00:00Z",
+              "updatedAt": "2024-05-10T12:00:00Z"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "/api/v1/fraud/analyze",
+        "bodyPatterns": [
+          {
+            "matchesJsonPath": "$.customerId",
+            "equalTo": "1002"
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "orderId": "f053467f-bd48-4fd2-9481-75bd4e88ee41",
+          "customerId": "1002",
+          "analyzedAt": "2024-05-10T12:00:00Z",
+          "classification": "REGULAR",
+          "occurrences": [
+            {
+              "id": "reg-001",
+              "productId": 78900002,
+              "type": "STANDARD",
+              "description": "Standard risk assessment completed",
+              "createdAt": "2024-05-10T12:00:00Z",
+              "updatedAt": "2024-05-10T12:00:00Z"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "/api/v1/fraud/analyze",
+        "bodyPatterns": [
+          {
+            "matchesJsonPath": "$.customerId",
+            "equalTo": "1003"
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "orderId": "g053467f-bd48-4fd2-9481-75bd4e88ee42",
+          "customerId": "1003",
+          "analyzedAt": "2024-05-10T12:00:00Z",
+          "classification": "HIGH_RISK",
+          "occurrences": [
+            {
+              "id": "hr-001",
+              "productId": 78900069,
+              "type": "FRAUD",
+              "description": "Attempted Fraudulent transaction",
+              "createdAt": "2024-05-10T12:00:00Z",
+              "updatedAt": "2024-05-10T12:00:00Z"
+            },
+            {
+              "id": "hr-002",
+              "productId": 104445569,
+              "type": "SUSPICION",
+              "description": "Unusual activity flagged for review",
+              "createdAt": "2024-04-09T14:35:30Z",
+              "updatedAt": "2024-04-09T14:35:30Z"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "/api/v1/fraud/analyze",
+        "bodyPatterns": [
+          {
+            "matchesJsonPath": "$.customerId",
+            "equalTo": "1004"
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "orderId": "h053467f-bd48-4fd2-9481-75bd4e88ee43",
+          "customerId": "1004",
+          "analyzedAt": "2024-05-10T12:00:00Z",
+          "classification": "NO_INFO",
+          "occurrences": [
+            {
+              "id": "ni-001",
+              "productId": 78900004,
+              "type": "NO_DATA",
+              "description": "Insufficient data for risk assessment",
+              "createdAt": "2024-05-10T12:00:00Z",
+              "updatedAt": "2024-05-10T12:00:00Z"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "/api/v1/fraud/analyze"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "orderId": "default-order-id",
+          "customerId": "{{jsonPath request.body '$.customerId'}}",
+          "analyzedAt": "2024-05-10T12:00:00Z",
+          "classification": "REGULAR",
+          "occurrences": [
+            {
+              "id": "def-001",
+              "productId": 78900000,
+              "type": "STANDARD",
+              "description": "Default risk assessment",
+              "createdAt": "2024-05-10T12:00:00Z",
+              "updatedAt": "2024-05-10T12:00:00Z"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

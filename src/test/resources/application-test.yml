@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: ms-order-test
+
+  # Configurações serão sobrescritas pelo TestContainers PostgreSQL
+
+  kafka:
+    bootstrap-servers: localhost:61254
+    consumer:
+      group-id: test-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      enable-auto-commit: true
+      properties:
+        session.timeout.ms: 10000
+        heartbeat.interval.ms: 3000
+        max.poll.interval.ms: 300000
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: 1
+      retries: 0
+      properties:
+        delivery.timeout.ms: 30000
+        request.timeout.ms: 5000
+        linger.ms: 0
+        batch.size: 16384
+
+app:
+  fraud-api:
+    url: http://localhost:8080/api/v1
+  simulator:
+    enabled: false
+
+logging:
+  level:
+    com.seguradora.msorder: DEBUG
+    org.springframework.kafka: WARN
+    org.springframework.test: WARN
+    org.testcontainers: INFO
+    org.apache.kafka: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"

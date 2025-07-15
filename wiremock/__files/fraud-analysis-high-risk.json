@@ -1,0 +1,6 @@
+{
+  "customerId": "1001",
+  "riskLevel": "HIGH_RISK",
+  "reason": "Customer profile requires additional verification",
+  "timestamp": "2024-01-15T10:30:00Z"
+}
