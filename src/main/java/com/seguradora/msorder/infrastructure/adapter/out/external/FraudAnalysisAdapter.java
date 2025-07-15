@@ -5,42 +5,34 @@ import com.seguradora.msorder.infrastructure.adapter.out.external.dto.FraudAnaly
 import com.seguradora.msorder.infrastructure.adapter.out.external.dto.FraudAnalysisResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.client.RestTemplate;
 
-/**
- * Adaptador para consumir a API de análise de fraudes
- */
 @Component
 public class FraudAnalysisAdapter implements FraudAnalysisPort {
 
-    private final WebClient webClient;
+    private final RestTemplate restTemplate;
     private final String fraudApiBaseUrl;
 
-    public FraudAnalysisAdapter(WebClient.Builder webClientBuilder,
-                               @Value("${fraud-api.base-url:http://localhost:8081}") String fraudApiBaseUrl) {
-        this.webClient = webClientBuilder.baseUrl(fraudApiBaseUrl).build();
+    public FraudAnalysisAdapter(
+            @Value("${fraud-api.base-url:http://localhost:8081}") String fraudApiBaseUrl) {
+        this.restTemplate = new RestTemplate();
         this.fraudApiBaseUrl = fraudApiBaseUrl;
     }
 
     @Override
     public String analyzeRisk(FraudAnalysisRequest request) {
         try {
-            FraudAnalysisResponse response = webClient.post()
-                .uri("/api/v1/fraud/analyze")
-                .bodyValue(request)
-                .retrieve()
-                .bodyToMono(FraudAnalysisResponse.class)
-                .block();
+            String url = fraudApiBaseUrl + "/api/v1/fraud/analyze";
+            FraudAnalysisResponse response = restTemplate.postForObject(
+                    url, request, FraudAnalysisResponse.class);
 
-            // Usar classification primeiro, depois riskLevel para compatibilidade
             if (response != null) {
                 return response.getClassification() != null ?
-                       response.getClassification() :
-                       response.getRiskLevel();
+                        response.getClassification() :
+                        response.getRiskLevel();
             }
             return "REGULAR";
         } catch (Exception e) {
-            // Em caso de erro, assumimos risco regular
             return "REGULAR";
         }
     }

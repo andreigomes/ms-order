@@ -42,7 +42,7 @@ Sistema para gerenciamento de solicitações de apólices de seguro, desenvolvid
 ### 5. Sistema de Eventos Kafka
 - **Tópicos produzidos**: `order-events`
 - **Tópicos consumidos**: `payment-events`, `subscription-events`
-- **Eventos**: ORDER_CREATED, ORDER_VALIDATED, ORDER_PENDING, ORDER_APPROVED, ORDER_REJECTED, ORDER_CANCELLED
+- **Eventos**: ORDER_RECEIVED, ORDER_VALIDATED, ORDER_PENDING, ORDER_APPROVED, ORDER_REJECTED, ORDER_CANCELLED
 
 ### 6. Endpoints Manuais para Teste de Eventos
 - **POST** `/api/v1/manual-events/payment` - Publica evento de pagamento manual
@@ -213,6 +213,17 @@ O projeto segue os princípios da Clean Architecture, separando responsabilidade
 - Os tópicos Kafka são criados automaticamente pela aplicação Spring Boot se a configuração `KAFKA_AUTO_CREATE_TOPICS_ENABLE` estiver como `true` (default no docker-compose).
 - Para ambientes de produção, recomenda-se criar os tópicos manualmente com configurações específicas de partições e replicação, usando scripts ou comandos do Kafka CLI.
 
+### Eventos Kafka
+
+- **ORDER_RECEIVED**: Evento publicado quando um pedido é recebido e registrado no sistema.
+- **ORDER_VALIDATED**: Evento publicado após validação do pedido.
+- **ORDER_PENDING**: Evento publicado quando o pedido está aguardando aprovação.
+- **ORDER_APPROVED**: Evento publicado quando o pedido é aprovado.
+- **ORDER_REJECTED**: Evento publicado quando o pedido é rejeitado.
+- **ORDER_CANCELLED**: Evento publicado quando o pedido é cancelado.
+- **SUBSCRIPTION_APPROVED**: Evento publicado quando a subscrição é aprovada.
+- **PAYMENT_APPROVED**: Evento publicado quando o pagamento é aprovado.
+
 ---
 
 ## 🌐 Ambientes e Perfis de Configuração
@@ -242,12 +253,6 @@ Acesse http://localhost:8080/actuator/prometheus para visualizar as métricas da
 
 ---
 
-## 🤝 Contato
-
-- Contato: andrei
-
----
-
 ## ▶️ Como subir a aplicação localmente
 
 1. **Pré-requisitos:**
@@ -268,6 +273,9 @@ docker-compose up -d
 ```
 Ou, se preferir, rode pelo IntelliJ/Eclipse com o perfil `local` ativo.
 
-4. **Acesse as APIs:**
-   - API REST: http://localhost:8080/api/v1/orders
-   - Prometheus: http://localhost:8080/actuator/prometheus
+
+## 🤝 Contato
+
+- Contato: andrei
+
+---
