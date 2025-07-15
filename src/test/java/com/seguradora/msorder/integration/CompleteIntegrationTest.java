@@ -45,7 +45,9 @@ class CompleteIntegrationTest {
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine")
             .withDatabaseName("orders_test")
             .withUsername("test")
-            .withPassword("test");
+            .withPassword("test")
+            .withReuse(false) // Força criação de novo container a cada execução
+            .withTmpFs(Map.of("/var/lib/postgresql/data", "rw")); // Usa tmpfs para dados temporários
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
@@ -58,9 +60,13 @@ class CompleteIntegrationTest {
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "none");
         registry.add("spring.jpa.show-sql", () -> "false");
 
+        // Configurações do Flyway para garantir execução correta
         registry.add("spring.flyway.enabled", () -> "true");
         registry.add("spring.flyway.locations", () -> "classpath:db/migration");
+        registry.add("spring.flyway.clean-disabled", () -> "false");
         registry.add("spring.flyway.clean-on-validation-error", () -> "true");
+        registry.add("spring.flyway.baseline-on-migrate", () -> "true");
+        registry.add("spring.flyway.validate-on-migrate", () -> "true");
     }
 
     @LocalServerPort

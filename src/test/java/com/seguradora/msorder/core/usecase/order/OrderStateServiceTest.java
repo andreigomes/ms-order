@@ -137,14 +137,16 @@ class OrderStateServiceTest {
     @Test
     void shouldThrowExceptionWhenOrderNotFound() {
         // Given
-        OrderId validOrderId = OrderId.of("550e8400-e29b-41d4-a716-446655440000"); // UUID válido
-        when(orderRepositoryPort.findById(any(OrderId.class))).thenReturn(java.util.Optional.empty());
+        String validUuidString = "550e8400-e29b-41d4-a716-446655440000";
+        OrderId orderId = OrderId.of(validUuidString);
+
+        when(orderRepositoryPort.findById(orderId)).thenReturn(java.util.Optional.empty());
 
         // When & Then
         assertThatThrownBy(() -> updateOrderStatusService.approveOrder(
-                new UpdateOrderStatusUseCase.ApproveOrderCommand(validOrderId)
+            new UpdateOrderStatusUseCase.ApproveOrderCommand(orderId)
         ))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Order not found");
+            .isInstanceOf(RuntimeException.class)
+            .hasMessageContaining("Order not found");
     }
 }

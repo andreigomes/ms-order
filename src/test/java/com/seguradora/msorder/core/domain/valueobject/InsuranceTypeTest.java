@@ -46,8 +46,8 @@ class InsuranceTypeTest {
         InsuranceType[] values = InsuranceType.values();
 
         // Then
-        assertThat(values).hasSize(6);
-        assertThat(values).contains(
+        assertThat(values).hasSize(6); // AUTO, HOME, LIFE, HEALTH, TRAVEL, BUSINESS
+        assertThat(values).containsExactlyInAnyOrder(
             InsuranceType.AUTO,
             InsuranceType.HOME,
             InsuranceType.LIFE,

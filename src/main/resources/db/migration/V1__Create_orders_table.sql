@@ -10,7 +10,7 @@
 -- \c seguradora_orders;
 
 -- Criar tabela de pedidos
-CREATE TABLE IF NOT EXISTS orders (
+CREATE TABLE orders (
     id VARCHAR(36) PRIMARY KEY,
     customer_id VARCHAR(36) NOT NULL,
     product_id VARCHAR(36) NOT NULL,
@@ -26,8 +26,14 @@ CREATE TABLE IF NOT EXISTS orders (
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL,
     finished_at TIMESTAMP NULL,
-    history JSONB -- Para PostgreSQL
+    history JSONB, -- Para PostgreSQL
+    payment_approved VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+    subscription_approved VARCHAR(50) NOT NULL DEFAULT 'PENDING'
 );
+
+-- Comentários para documentação
+COMMENT ON COLUMN orders.payment_approved IS 'Status de aprovação do pagamento: PENDING, APPROVED, REJECTED';
+COMMENT ON COLUMN orders.subscription_approved IS 'Status de aprovação da subscrição: PENDING, APPROVED, REJECTED';
 
 -- Criar índices para melhor performance
 CREATE INDEX IF NOT EXISTS idx_orders_customer_id ON orders(customer_id);

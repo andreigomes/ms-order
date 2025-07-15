@@ -30,8 +30,8 @@ public class Order {
     private OrderHistory history;
 
     // Campos para coordenação de eventos
-    private Boolean paymentApproved = null; // null = não processado, true = aprovado, false = rejeitado
-    private Boolean subscriptionApproved = null; // null = não processado, true = aprovado, false = rejeitado
+    private String paymentApproved = "PENDING"; // PENDING, APPROVED, REJECTED
+    private String subscriptionApproved = "PENDING"; // PENDING, APPROVED, REJECTED
 
     // Construtor privado para garantir criação através de factory methods
     private Order() {}
@@ -69,7 +69,7 @@ public class Order {
                                BigDecimal totalMonthlyPremiumAmount, BigDecimal insuredAmount,
                                Coverages coverages, Assistances assistances, OrderStatus status,
                                String description, LocalDateTime createdAt, LocalDateTime updatedAt,
-                               LocalDateTime finishedAt, OrderHistory history, Boolean paymentApproved, Boolean subscriptionApproved) {
+                               LocalDateTime finishedAt, OrderHistory history, String paymentApproved, String subscriptionApproved) {
         Order order = new Order();
         order.id = id;
         order.customerId = customerId;
@@ -215,7 +215,7 @@ public class Order {
             throw new IllegalStateException("Can only approve payment for orders in PENDING state");
         }
 
-        this.paymentApproved = true;
+        this.paymentApproved = "APPROVED";
         this.updatedAt = LocalDateTime.now();
         this.history = this.history.addEntry(status, status, "Pagamento aprovado");
 
@@ -230,7 +230,7 @@ public class Order {
             throw new IllegalStateException("Can only reject payment for orders in PENDING state");
         }
 
-        this.paymentApproved = false;
+        this.paymentApproved = "REJECTED";
         reject("Pagamento rejeitado: " + reason);
     }
 
@@ -242,7 +242,7 @@ public class Order {
             throw new IllegalStateException("Can only approve subscription for orders in PENDING state");
         }
 
-        this.subscriptionApproved = true;
+        this.subscriptionApproved = "APPROVED";
         this.updatedAt = LocalDateTime.now();
         this.history = this.history.addEntry(status, status, "Subscrição aprovada");
 
@@ -257,7 +257,7 @@ public class Order {
             throw new IllegalStateException("Can only reject subscription for orders in PENDING state");
         }
 
-        this.subscriptionApproved = false;
+        this.subscriptionApproved = "REJECTED";
         reject("Subscrição rejeitada: " + reason);
     }
 
@@ -265,14 +265,14 @@ public class Order {
      * Verifica se o pedido pode ser finalizado (ambos pagamento e subscrição aprovados)
      */
     public boolean canBeFinalized() {
-        return Boolean.TRUE.equals(paymentApproved) && Boolean.TRUE.equals(subscriptionApproved);
+        return "APPROVED".equals(paymentApproved) && "APPROVED".equals(subscriptionApproved);
     }
 
     /**
      * Verifica se algum processo foi rejeitado
      */
     public boolean hasAnyRejection() {
-        return Boolean.FALSE.equals(paymentApproved) || Boolean.FALSE.equals(subscriptionApproved);
+        return "REJECTED".equals(paymentApproved) || "REJECTED".equals(subscriptionApproved);
     }
 
     /**
@@ -303,8 +303,8 @@ public class Order {
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public LocalDateTime getFinishedAt() { return finishedAt; }
     public OrderHistory getHistory() { return history; }
-    public Boolean getPaymentApproved() { return paymentApproved; }
-    public Boolean getSubscriptionApproved() { return subscriptionApproved; }
+    public String getPaymentApproved() { return paymentApproved; }
+    public String getSubscriptionApproved() { return subscriptionApproved; }
 
     @Override
     public boolean equals(Object o) {

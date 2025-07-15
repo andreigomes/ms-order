@@ -79,10 +79,10 @@ public class OrderJpaEntity {
 
     // Campos para coordenação de eventos
     @Column(name = "payment_approved")
-    private Boolean paymentApproved;
+    private String paymentApproved;
 
     @Column(name = "subscription_approved")
-    private Boolean subscriptionApproved;
+    private String subscriptionApproved;
 
     // Construtor padrão
     public OrderJpaEntity() {}
@@ -94,8 +94,8 @@ public class OrderJpaEntity {
                          Map<String, BigDecimal> coverages, List<String> assistances,
                          OrderStatus status, String description, LocalDateTime createdAt,
                          LocalDateTime updatedAt, LocalDateTime finishedAt,
-                         List<Map<String, Object>> history, Boolean paymentApproved,
-                         Boolean subscriptionApproved) {
+                         List<Map<String, Object>> history, String paymentApproved,
+                         String subscriptionApproved) {
         this.id = id;
         this.customerId = customerId;
         this.productId = productId;
@@ -165,9 +165,9 @@ public class OrderJpaEntity {
     public List<Map<String, Object>> getHistory() { return history; }
     public void setHistory(List<Map<String, Object>> history) { this.history = history; }
 
-    public Boolean getPaymentApproved() { return paymentApproved; }
-    public void setPaymentApproved(Boolean paymentApproved) { this.paymentApproved = paymentApproved; }
+    public String getPaymentApproved() { return paymentApproved; }
+    public void setPaymentApproved(String paymentApproved) { this.paymentApproved = paymentApproved; }
 
-    public Boolean getSubscriptionApproved() { return subscriptionApproved; }
-    public void setSubscriptionApproved(Boolean subscriptionApproved) { this.subscriptionApproved = subscriptionApproved; }
+    public String getSubscriptionApproved() { return subscriptionApproved; }
+    public void setSubscriptionApproved(String subscriptionApproved) { this.subscriptionApproved = subscriptionApproved; }
 }
