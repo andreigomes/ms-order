@@ -110,7 +110,16 @@ curl -X POST http://localhost:8080/api/v1/manual-events/subscription \
   -d '{"orderId": "<orderId>", "status": "APPROVED", "reason": "Manual test"}'
 ```
 
+
+## 🔄 Outros Endpoints de Troca de Status
+
+- **PUT** `/api/v1/orders/{orderId}/approve` - Aprovar solicitação
+- **PUT** `/api/v1/orders/{orderId}/reject` - Rejeitar solicitação
+- **PUT** `/api/v1/orders/{orderId}/cancel` - Cancelar solicitação
+- **PUT** `/api/v1/orders/{orderId}/pending` - solicitação Pendente
+
 ---
+
 
 ## 🧑‍💻 Princípios SOLID Aplicados
 
@@ -141,17 +150,6 @@ public class OrderService {
     }
 }
 ```
-
----
-
-## 🔄 Outros Endpoints de Troca de Status
-
-- **PUT** `/api/v1/orders/{orderId}/approve` - Aprovar solicitação
-- **PUT** `/api/v1/orders/{orderId}/reject` - Rejeitar solicitação
-- **PUT** `/api/v1/orders/{orderId}/cancel` - Cancelar solicitação
-- **PUT** `/api/v1/orders/{orderId}/pending` - solicitação Pendente
-
----
 
 ## 🔒 Controle de Concorrência Otimista
 
@@ -191,11 +189,14 @@ O campo `version` implementa o controle de concorrência otimista (optimistic lo
 
 ---
 
-## 📊 Observabilidade
+## 📊 Métricas e Observabilidade
 
-- Health check: `/actuator/health`
-- Métricas: `/actuator/metrics`
-- Logs estruturados disponíveis via padrão SLF4J/Logback
+- **Prometheus**: Métricas expostas automaticamente no endpoint:
+  - `GET /actuator/prometheus`
+
+Exemplo de uso:
+
+Acesse http://localhost:8080/actuator/prometheus para visualizar as métricas da aplicação e integrar com Prometheus/Grafana.
 
 ---
 
