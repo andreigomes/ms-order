@@ -51,6 +51,19 @@ fraud:
     enabled: true
     fallback-risk-level: REGULAR
 
+management:
+  server:
+    port: 8080
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
 logging:
   level:
     com.seguradora.msorder: INFO

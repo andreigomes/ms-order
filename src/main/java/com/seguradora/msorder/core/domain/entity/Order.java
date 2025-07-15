@@ -4,8 +4,6 @@ import com.seguradora.msorder.core.domain.valueobject.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -34,7 +32,6 @@ public class Order {
     private String paymentApproved = "PENDING"; // PENDING, APPROVED, REJECTED
     private String subscriptionApproved = "PENDING"; // PENDING, APPROVED, REJECTED
 
-    // Construtor privado para garantir criação através de factory methods
     private Order() {}
 
     public static Order create(CustomerId customerId, ProductId productId, InsuranceType category,
@@ -218,7 +215,6 @@ public class Order {
 
         this.paymentApproved = "APPROVED";
         this.updatedAt = LocalDateTime.now();
-        // Não adiciona ao histórico - apenas marca como aprovado
 
         return canBeFinalized();
     }
@@ -245,7 +241,6 @@ public class Order {
 
         this.subscriptionApproved = "APPROVED";
         this.updatedAt = LocalDateTime.now();
-        // Não adiciona ao histórico - apenas marca como aprovado
 
         return canBeFinalized();
     }
