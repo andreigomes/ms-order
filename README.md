@@ -1,190 +1,212 @@
 # MS-ORDER - Microsserviço de Pedidos de Seguro
 
-Sistema para gerenciamento de solicitações de apólices de seguro, desenvolvido seguindo os princípios de Clean Architecture e Domain-Driven Design.
+Sistema para gerenciamento de solicitações de apólices de seguro, desenvolvido seguindo os princípios de Clean Architecture, Domain-Driven Design (DDD) e Arquitetura Hexagonal (Ports & Adapters).
 
-## 🏗️ Arquitetura
+---
 
-O projeto utiliza **Arquitetura Hexagonal (Ports & Adapters)** com as seguintes camadas:
+## 🏗️ Arquitetura e Padrões Utilizados
 
-### Core (Domínio)
-- **Entities**: `Order` - Entidade principal do domínio
-- **Value Objects**: `OrderStatus`, `InsuranceType`, `RiskLevel` - Objetos de valor imutáveis
-- **Use Cases**: Casos de uso da aplicação (CreateOrder, GetOrder, ProcessPayment, etc.)
-- **Ports**: Interfaces que definem contratos (In/Out ports)
+- **Arquitetura Hexagonal (Ports & Adapters)**: Separação clara entre domínio, casos de uso e infraestrutura, facilitando testes, manutenção e evolução.
+- **Domain-Driven Design (DDD)**: Entidades ricas, Value Objects imutáveis, regras de negócio centralizadas no domínio.
+- **Clean Architecture**: Camadas bem definidas, dependências sempre apontando para o domínio.
+- **Event-Driven**: Comunicação assíncrona via Kafka para integração com outros serviços.
+- **Cache com Evict**: Uso de cache para performance, com limpeza automática a cada alteração de status.
+- **Controle de Concorrência**: Versionamento otimista (campo version) para evitar conflitos em atualizações concorrentes.
+- **Testcontainers**: Testes de integração reais com PostgreSQL e Kafka em containers.
+- **Flyway**: Versionamento de schema do banco de dados.
 
-### Infrastructure (Infraestrutura)
-- **Adapters In**: Controllers REST, Consumers Kafka
-- **Adapters Out**: Repositórios JPA, clientes HTTP, publishers Kafka
-- **Configuration**: Configurações do Spring Boot, Kafka, banco de dados
+---
 
 ## 🚀 Funcionalidades Implementadas
 
-### 1. ✅ API REST para Solicitações de Apólice
+### 1. API REST para Solicitações de Apólice
 - **POST** `/api/v1/orders` - Criar nova solicitação
 - **GET** `/api/v1/orders/{id}` - Buscar por ID
 - **GET** `/api/v1/orders/customer/{customerId}` - Buscar por cliente
 - **PUT** `/api/v1/orders/{id}/cancel` - Cancelar solicitação
 
-### 2. ✅ Integração com API de Fraudes (Mock Interno)
-- **Análise de Risco**: Mock interno que simula consulta a API externa
-- **Classificação por Valor e Tipo**: Baseado no valor da apólice e tipo de seguro
-- **Níveis de Risco**:
-  - **HIGH_RISK**: Valor > R$ 500.000 - Requer análise manual
-  - **REGULAR**: Valor entre R$ 100.000 - R$ 500.000 - Processamento padrão
-  - **PREFERENTIAL**: Valor entre R$ 50.000 - R$ 100.000 - Cliente premium
-  - **NO_INFO**: Valor < R$ 50.000 - Informações insuficientes
+### 2. Integração com API de Fraudes (Mock Wiremock)
+- **Consulta de risco**: Chamada HTTP para mock configurado via Wiremock
+- **IDs disponíveis para consulta**: 1001, 1002, 1003, 1004 (veja exemplos abaixo)
 
-### 3. ✅ Regras de Validação por Risco
-- **Validação de Valor**: Limites baseados no nível de risco do cliente
-- **Fluxo Otimizado**: RECEIVED → VALIDATED → PENDING (se aprovado)
-- **Rejeição Direta**: Para valores acima do limite permitido
+### 3. Regras de Validação por Risco
+- **Validação de valor e risco**: RECEIVED → VALIDATED → PENDING → APPROVED
+- **Rejeição direta**: Para valores acima do limite permitido
 
-### 4. ✅ Persistência em Banco de Dados
-- **PostgreSQL** para produção (via Docker)
-- **Flyway** para versionamento de schema
-- **JPA/Hibernate** para mapeamento objeto-relacional
-- **Testcontainers** para testes de integração
+### 4. Persistência e Versionamento
+- **Banco**: PostgreSQL (produção e testes)
+- **Flyway**: Versionamento automático do schema
+- **JPA/Hibernate**: ORM
+- **Testcontainers**: Testes de integração reais
 
-### 5. ✅ Sistema de Eventos Kafka
+### 5. Sistema de Eventos Kafka
+- **Tópicos produzidos**: `order-events`
+- **Tópicos consumidos**: `payment-events`, `subscription-events`
+- **Eventos**: ORDER_CREATED, ORDER_VALIDATED, ORDER_PENDING, ORDER_APPROVED, ORDER_REJECTED, ORDER_CANCELLED
 
-#### 📤 Tópicos de Produção (Outbound)
-**Tópico**: `order-events`
+### 6. Endpoints Manuais para Teste de Eventos
+- **POST** `/api/v1/manual-events/payment` - Publica evento de pagamento manual
+- **POST** `/api/v1/manual-events/subscription` - Publica evento de subscrição manual
 
-Eventos publicados pelo ms-order:
-- `ORDER_CREATED` - Pedido criado (estado RECEIVED)
-- `ORDER_VALIDATED` - Passou na análise de fraudes
-- `ORDER_PENDING` - Aguardando aprovação de pagamento e subscrição
-- `ORDER_APPROVED` - Totalmente aprovado para emissão
-- `ORDER_REJECTED` - Rejeitado por qualquer motivo
-- `ORDER_CANCELLED` - Cancelado pelo cliente
+---
 
-**Exemplo de mensagem produzida**:
-```json
-{
-  "eventType": "ORDER_CREATED",
-  "orderId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-  "customerId": "12345",
-  "status": "RECEIVED",
-  "timestamp": "2025-07-14T10:30:00Z",
-  "orderDetails": {
+## 🧪 Testes Automatizados
+- **Cobertura**: +400 testes automatizados (unitários e integração)
+- **Testes de Integração**: Usam Testcontainers para PostgreSQL e Kafka reais
+- **Destaque**: `shouldCompleteFullOrderFlowWithApproval` (CompleteIntegrationTest)
+  - Cria pedido, simula aprovação de pagamento e subscrição, verifica publicação de eventos e status final APPROVED.
+
+### Como rodar os testes de integração
+
+```sh
+mvn clean test
+```
+
+- É necessário Docker rodando para os testes de integração.
+- O teste `shouldCompleteFullOrderFlowWithApproval` cobre todo o ciclo de vida do pedido.
+
+---
+
+## 🔎 Exemplos de Consulta
+
+### Criar Pedido
+```sh
+curl -X POST http://localhost:8080/api/v1/orders \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customerId": "1001",
+    "productId": "PROD001",
     "category": "AUTO",
-    "insuredAmount": 150000.00,
-    "riskLevel": "REGULAR"
-  }
-}
-```
-
-#### 📥 Tópicos de Consumo (Inbound)
-
-**Tópico**: `payment-events`  
-**Consumer Group**: `order-service-payment-group`
-
-Eventos consumidos de serviços de pagamento:
-```json
-{
-  "eventType": "PAYMENT_PROCESSED",
-  "orderId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-  "status": "APPROVED",
-  "reason": "Payment processed successfully",
-  "timestamp": "2025-07-14T10:32:15Z",
-  "paymentDetails": {
-    "paymentId": "pay_1234567890",
+    "salesChannel": "WEB_SITE",
     "paymentMethod": "CREDIT_CARD",
-    "amount": 1200.50,
-    "transactionId": "txn_abcd1234",
-    "processedAt": "2025-07-14T10:32:10Z"
-  }
+    "totalMonthlyPremiumAmount": 1000.00,
+    "insuredAmount": 50000.00,
+    "coverages": {"Roubo": 20000.00, "Perda Total": 30000.00},
+    "assistances": ["Guincho até 250km"]
+  }'
+```
+
+### Consultar Pedido por ID
+```sh
+curl http://localhost:8080/api/v1/orders/{id}
+```
+
+### Consultar Pedidos por Cliente
+```sh
+curl http://localhost:8080/api/v1/orders/customer/1001
+```
+
+### Aprovar Pagamento Manualmente
+```sh
+curl -X POST http://localhost:8080/api/v1/manual-events/payment \
+  -H "Content-Type: application/json" \
+  -d '{"orderId": "<orderId>", "status": "APPROVED", "reason": "Manual test"}'
+```
+
+### Aprovar Subscrição Manualmente
+```sh
+curl -X POST http://localhost:8080/api/v1/manual-events/subscription \
+  -H "Content-Type: application/json" \
+  -d '{"orderId": "<orderId>", "status": "APPROVED", "reason": "Manual test"}'
+```
+
+---
+
+## 🧑‍💻 Princípios SOLID Aplicados
+
+- **S - Single Responsibility Principle**: Cada classe tem uma única responsabilidade (ex: OrderService só lida com regras de pedido).
+- **O - Open/Closed Principle**: Casos de uso e entidades são abertos para extensão, fechados para modificação (ex: novas regras de negócio via polimorfismo).
+- **L - Liskov Substitution Principle**: Interfaces e abstrações permitem substituição sem quebrar o sistema.
+- **I - Interface Segregation Principle**: Ports (interfaces) são específicas para cada caso de uso.
+- **D - Dependency Inversion Principle**: Domínio depende de abstrações, nunca de implementações concretas.
+
+### Exemplo de Classe Aplicando SOLID
+```java
+// Exemplo simplificado
+@Service
+public class OrderService {
+    private final OrderRepositoryPort orderRepository;
+    private final OrderEventPublisherPort eventPublisher;
+    // SRP: só lida com regras de pedido
+    // DIP: depende de interfaces, não de implementações
+    public OrderService(OrderRepositoryPort orderRepository, OrderEventPublisherPort eventPublisher) {
+        this.orderRepository = orderRepository;
+        this.eventPublisher = eventPublisher;
+    }
+    public void approveOrder(String orderId) {
+        var order = orderRepository.findById(OrderId.of(orderId)).orElseThrow();
+        order.approve();
+        orderRepository.save(order);
+        eventPublisher.publishOrderApproved(order);
+    }
 }
 ```
 
-**Tópico**: `subscription-events`  
-**Consumer Group**: `order-service-subscription-group`
+---
 
-Eventos consumidos de serviços de subscrição:
-```json
-{
-  "eventType": "SUBSCRIPTION_ANALYZED",
-  "orderId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-  "status": "APPROVED",
-  "reason": "Risk analysis completed - approved",
-  "timestamp": "2025-07-14T10:33:20Z",
-  "subscriptionDetails": {
-    "subscriptionId": "sub_9876543210",
-    "analyst": "John Doe",
-    "analysisDate": "2025-07-14T10:33:15Z",
-    "comments": "Low risk customer with good payment history"
-  }
-}
-```
+## 🔄 Outros Endpoints de Troca de Status
 
-### 6. ✅ Simulador de Serviços Externos
-**Simulação de Pagamento**:
-- Delay configurável (padrão: 2s)
-- Status: APPROVED (90%) ou REJECTED (10%)
-- Geração de transaction ID
+- **PUT** `/api/v1/orders/{orderId}/approve` - Aprovar solicitação
+- **PUT** `/api/v1/orders/{orderId}/reject` - Rejeitar solicitação
+- **PUT** `/api/v1/orders/{orderId}/cancel` - Cancelar solicitação
+- **PUT** `/api/v1/orders/{orderId}/pending` - solicitação Pendente
 
-**Simulação de Subscrição**:
-- Delay configurável (padrão: 3s)
-- Status: APPROVED (85%) ou REJECTED (15%)
-- Análise de risco simulada
+---
 
-### 7. ✅ Coordenação de Eventos
-- **Processamento Assíncrono**: Validação e serviços externos não bloqueiam criação
-- **Resilência**: Fallback para risco REGULAR em caso de falha na API de fraudes
-- **Rastreabilidade**: Logs detalhados de todas as operações
+## 🔒 Controle de Concorrência Otimista
 
-## 🛠️ Tecnologias Utilizadas
+O campo `version` implementa o controle de concorrência otimista (optimistic locking) no banco de dados, utilizando JPA/Hibernate:
 
-### Backend
-- **Java 17** - Linguagem principal
-- **Spring Boot 3.2** - Framework principal
-- **Spring WebFlux** - Para clientes HTTP assíncronos (consumo da API de fraudes)
-- **Spring Data JPA** - Persistência
-- **Spring Kafka** - Mensageria assíncrona para coordenação de eventos
-- **Flyway** - Migrations de banco
+- O campo `version` (do tipo Long) é incrementado automaticamente a cada atualização da entidade Order.
+- Ao tentar salvar uma entidade, o Hibernate inclui o valor atual do `version` na cláusula WHERE do UPDATE.
+- Se outro processo/usuário já tiver alterado a mesma entidade (e incrementado o `version`), o UPDATE não encontra nenhum registro para atualizar (pois o version não bate).
+- O Hibernate então lança uma `OptimisticLockingFailureException`.
+- O método é anotado com `@Retryable` para tentar novamente em caso de concorrência, evitando perda de dados ou sobrescrita indevida.
 
-### Banco de Dados
-- **PostgreSQL** - Banco principal (produção e testes)
+**Resumo:** O `version` garante que duas transações concorrentes não sobrescrevam dados uma da outra sem perceber. Se houver conflito, uma delas falha e pode tentar novamente, garantindo integridade dos dados.
 
-### Mensageria
-- **Apache Kafka** - Sistema de eventos para coordenação entre microserviços
-- **Kafka Connect** - Integração de dados
+---
 
-### Mock de Serviços Externos
-- **WireMock** - Simulação da API de fraudes externa
+## 🛠️ Problemas Resolvidos
+- Concorrência em atualização de status (versionamento otimista)
+- Cache sincronizado com o banco (evict automático)
+- Testes de integração confiáveis com Testcontainers
+- Mock de API de fraudes via Wiremock
+- Fluxo de eventos robusto e auditável
 
-### Infraestrutura
-- **Docker & Docker Compose** - Containerização
-- **Maven** - Gerenciamento de dependências
+---
 
-### Qualidade
-- **JUnit 5** - Testes unitários
-- **Testcontainers** - Testes de integração com PostgreSQL real
-- **EmbeddedKafka** - Testes com Kafka real
+## ☁️ Configuração dos Tópicos Kafka
 
-## 🔄 Fluxo de Negócio
+- Os tópicos Kafka são criados automaticamente pela aplicação Spring Boot se a configuração `KAFKA_AUTO_CREATE_TOPICS_ENABLE` estiver como `true` (default no docker-compose).
+- Para ambientes de produção, recomenda-se criar os tópicos manualmente com configurações específicas de partições e replicação, usando scripts ou comandos do Kafka CLI.
 
-1. **Recepção**: Cliente envia solicitação → Status `RECEIVED`
-2. **Análise de Fraudes**: Consulta API de fraudes para classificar risco
-3. **Validação**: Aplica regras de valor baseadas no risco → Status `VALIDATED`
-4. **Processamento**: Dispara serviços de pagamento e subscrição → Status `PENDING`
-5. **Aprovação**: Aguarda ambos aprovarem → Status `APPROVED`
-6. **Rejeição**: Qualquer falha → Status `REJECTED`
-7. **Cancelamento**: Cliente pode cancelar → Status `CANCELLED`
+---
 
-## 🚦 Estados do Pedido
+## 🌐 Ambientes e Perfis de Configuração
 
-```
-RECEIVED → VALIDATED → PENDING → APPROVED
-    ↓          ↓          ↓
-REJECTED   REJECTED   REJECTED
-    ↓          ↓          ↓
-CANCELLED  CANCELLED     ❌
-```
+- Perfis disponíveis: `local`, `prod`.
+- Para rodar localmente, utilize o `application-local.yml`.
+- O Spring Boot seleciona o perfil via variável de ambiente `SPRING_PROFILES_ACTIVE`.
 
-## 📊 Métricas e Observabilidade
+---
 
-- **Logs Estruturados**: SLF4J com padrões consistentes
-- **Health Checks**: Spring Actuator
-- **Métricas**: Tempo de processamento, taxa de aprovação
-- **Tracing**: Rastreamento de requests e eventos
+## 📊 Observabilidade
+
+- Health check: `/actuator/health`
+- Métricas: `/actuator/metrics`
+- Logs estruturados disponíveis via padrão SLF4J/Logback
+
+---
+
+## ⚠️ Limitações Conhecidas
+
+- Em cenários de concorrência extrema, pode haver tentativas de gravação concorrente que resultarão em exceção otimista (tratada com retry).
+- O mock da API de fraudes (Wiremock) deve estar ativo para simulação dos fluxos de risco.
+- O cache pode causar atraso na visualização do status atualizado se não for invalidado corretamente.
+
+---
+
+## 🤝 Contato
+
+- Contato: andrei

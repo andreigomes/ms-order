@@ -26,10 +26,10 @@ public interface UpdateOrderStatusUseCase {
     /**
      * Processa um pedido
      */
-    Order processOrder(ProcessOrderCommand command);
+    Order pendingOrder(PendingOrderCommand command);
 
     record ApproveOrderCommand(OrderId orderId) {}
     record RejectOrderCommand(OrderId orderId) {}
     record CancelOrderCommand(OrderId orderId) {}
-    record ProcessOrderCommand(OrderId orderId) {}
+    record PendingOrderCommand(OrderId orderId) {}
 }

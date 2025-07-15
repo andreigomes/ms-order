@@ -112,10 +112,10 @@ public class OrderController {
         return ResponseEntity.ok(response);
     }
 
-    @PutMapping("/{orderId}/process")
-    public ResponseEntity<OrderResponse> processOrder(@PathVariable String orderId) {
-        var command = new UpdateOrderStatusUseCase.ProcessOrderCommand(OrderId.of(orderId));
-        Order order = updateOrderStatusUseCase.processOrder(command);
+    @PutMapping("/{orderId}/pending")
+    public ResponseEntity<OrderResponse> pendingOrder(@PathVariable String orderId) {
+        var command = new UpdateOrderStatusUseCase.PendingOrderCommand(OrderId.of(orderId));
+        Order order = updateOrderStatusUseCase.pendingOrder(command);
         OrderResponse response = orderMapper.toResponse(order);
         return ResponseEntity.ok(response);
     }

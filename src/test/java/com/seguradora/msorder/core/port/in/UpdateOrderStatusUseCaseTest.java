@@ -185,13 +185,13 @@ class UpdateOrderStatusUseCaseTest {
     }
 
     @Test
-    void shouldCreateProcessOrderCommandWithValidOrderId() {
+    void shouldCreatePendingOrderCommandWithValidOrderId() {
         // Given
         OrderId orderId = OrderId.generate();
 
         // When
-        UpdateOrderStatusUseCase.ProcessOrderCommand command =
-            new UpdateOrderStatusUseCase.ProcessOrderCommand(orderId);
+        UpdateOrderStatusUseCase.PendingOrderCommand command =
+            new UpdateOrderStatusUseCase.PendingOrderCommand(orderId);
 
         // Then
         assertThat(command.orderId()).isEqualTo(orderId);
@@ -199,26 +199,26 @@ class UpdateOrderStatusUseCaseTest {
     }
 
     @Test
-    void shouldCreateProcessOrderCommandWithNullOrderId() {
+    void shouldCreatePendingOrderCommandWithNullOrderId() {
         // Given
         OrderId orderId = null;
 
         // When
-        UpdateOrderStatusUseCase.ProcessOrderCommand command =
-            new UpdateOrderStatusUseCase.ProcessOrderCommand(orderId);
+        UpdateOrderStatusUseCase.PendingOrderCommand command =
+            new UpdateOrderStatusUseCase.PendingOrderCommand(orderId);
 
         // Then
         assertThat(command.orderId()).isNull();
     }
 
     @Test
-    void shouldTestProcessOrderCommandEquality() {
+    void shouldTestPendingOrderCommandEquality() {
         // Given
         OrderId orderId = OrderId.generate();
-        UpdateOrderStatusUseCase.ProcessOrderCommand command1 =
-            new UpdateOrderStatusUseCase.ProcessOrderCommand(orderId);
-        UpdateOrderStatusUseCase.ProcessOrderCommand command2 =
-            new UpdateOrderStatusUseCase.ProcessOrderCommand(orderId);
+        UpdateOrderStatusUseCase.PendingOrderCommand command1 =
+            new UpdateOrderStatusUseCase.PendingOrderCommand(orderId);
+        UpdateOrderStatusUseCase.PendingOrderCommand command2 =
+            new UpdateOrderStatusUseCase.PendingOrderCommand(orderId);
 
         // When & Then
         assertThat(command1).isEqualTo(command2);
@@ -228,14 +228,14 @@ class UpdateOrderStatusUseCaseTest {
     }
 
     @Test
-    void shouldTestProcessOrderCommandInequality() {
+    void shouldTestPendingOrderCommandInequality() {
         // Given
         OrderId orderId1 = OrderId.generate();
         OrderId orderId2 = OrderId.generate();
-        UpdateOrderStatusUseCase.ProcessOrderCommand command1 =
-            new UpdateOrderStatusUseCase.ProcessOrderCommand(orderId1);
-        UpdateOrderStatusUseCase.ProcessOrderCommand command2 =
-            new UpdateOrderStatusUseCase.ProcessOrderCommand(orderId2);
+        UpdateOrderStatusUseCase.PendingOrderCommand command1 =
+            new UpdateOrderStatusUseCase.PendingOrderCommand(orderId1);
+        UpdateOrderStatusUseCase.PendingOrderCommand command2 =
+            new UpdateOrderStatusUseCase.PendingOrderCommand(orderId2);
 
         // When & Then
         assertThat(command1).isNotEqualTo(command2);
@@ -254,8 +254,8 @@ class UpdateOrderStatusUseCaseTest {
             new UpdateOrderStatusUseCase.RejectOrderCommand(orderId);
         UpdateOrderStatusUseCase.CancelOrderCommand cancelCommand =
             new UpdateOrderStatusUseCase.CancelOrderCommand(orderId);
-        UpdateOrderStatusUseCase.ProcessOrderCommand processCommand =
-            new UpdateOrderStatusUseCase.ProcessOrderCommand(orderId);
+        UpdateOrderStatusUseCase.PendingOrderCommand processCommand =
+            new UpdateOrderStatusUseCase.PendingOrderCommand(orderId);
 
         // Then
         assertThat(approveCommand.orderId()).isEqualTo(orderId);
@@ -282,8 +282,8 @@ class UpdateOrderStatusUseCaseTest {
             new UpdateOrderStatusUseCase.RejectOrderCommand(orderId);
         UpdateOrderStatusUseCase.CancelOrderCommand cancelCommand =
             new UpdateOrderStatusUseCase.CancelOrderCommand(orderId);
-        UpdateOrderStatusUseCase.ProcessOrderCommand processCommand =
-            new UpdateOrderStatusUseCase.ProcessOrderCommand(orderId);
+        UpdateOrderStatusUseCase.PendingOrderCommand processCommand =
+            new UpdateOrderStatusUseCase.PendingOrderCommand(orderId);
 
         // Then
         assertThat(approveCommand.orderId().getValue().toString()).isEqualTo("550e8400-e29b-41d4-a716-446655440000");
@@ -304,8 +304,8 @@ class UpdateOrderStatusUseCaseTest {
             new UpdateOrderStatusUseCase.RejectOrderCommand(orderId);
         UpdateOrderStatusUseCase.CancelOrderCommand cancelCommand =
             new UpdateOrderStatusUseCase.CancelOrderCommand(orderId);
-        UpdateOrderStatusUseCase.ProcessOrderCommand processCommand =
-            new UpdateOrderStatusUseCase.ProcessOrderCommand(orderId);
+        UpdateOrderStatusUseCase.PendingOrderCommand processCommand =
+            new UpdateOrderStatusUseCase.PendingOrderCommand(orderId);
 
         // Then
         assertThat(approveCommand.toString()).isNotNull();
@@ -316,6 +316,6 @@ class UpdateOrderStatusUseCaseTest {
         assertThat(approveCommand.toString()).contains("ApproveOrderCommand");
         assertThat(rejectCommand.toString()).contains("RejectOrderCommand");
         assertThat(cancelCommand.toString()).contains("CancelOrderCommand");
-        assertThat(processCommand.toString()).contains("ProcessOrderCommand");
+        assertThat(processCommand.toString()).contains("PendingOrderCommand");
     }
 }

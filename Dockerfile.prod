@@ -1,0 +1,17 @@
+# Dockerfile para produção do ms-order
+FROM eclipse-temurin:17-jre-alpine as base
+
+WORKDIR /app
+
+# Copia o jar gerado pelo Maven
+COPY target/ms-order-*.jar app.jar
+
+# Variáveis de ambiente para configuração
+ENV JAVA_OPTS="-XX:+UseContainerSupport -Djava.security.egd=file:/dev/./urandom"
+
+# Expondo a porta padrão da aplicação
+EXPOSE 8080
+
+# Comando de inicialização
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+

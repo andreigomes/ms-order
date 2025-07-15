@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ms-order
+  labels:
+    app: ms-order
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ms-order
+  template:
+    metadata:
+      labels:
+        app: ms-order
+    spec:
+      containers:
+        - name: ms-order
+          image: ms-order:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "docker"
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://postgres:5432/seguradora_orders"
+            - name: SPRING_DATASOURCE_USERNAME
+              value: "seguradora_user"
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: "seguradora_pass"
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka:9092"
+            - name: FRAUD_API_BASE_URL
+              value: "http://fraud-api-mock:8080"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ms-order
+spec:
+  selector:
+    app: ms-order
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+  type: ClusterIP
+

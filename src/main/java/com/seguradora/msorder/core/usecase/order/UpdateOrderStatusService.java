@@ -56,7 +56,7 @@ public class UpdateOrderStatusService implements UpdateOrderStatusUseCase {
     }
 
     @Override
-    public Order processOrder(ProcessOrderCommand command) {
+    public Order pendingOrder(PendingOrderCommand command) {
         Order order = findOrderById(command.orderId());
         order.markAsPending();
         return orderRepository.save(order);

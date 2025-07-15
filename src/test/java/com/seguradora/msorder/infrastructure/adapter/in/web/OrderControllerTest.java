@@ -192,15 +192,15 @@ class OrderControllerTest {
     }
 
     @Test
-    void shouldProcessOrderSuccessfully() throws Exception {
+    void shouldPendingOrderSuccessfully() throws Exception {
         // Given
         String orderId = "123e4567-e89b-12d3-a456-426614174000";
-        when(updateOrderStatusUseCase.processOrder(any(UpdateOrderStatusUseCase.ProcessOrderCommand.class)))
+        when(updateOrderStatusUseCase.pendingOrder(any(UpdateOrderStatusUseCase.PendingOrderCommand.class)))
             .thenReturn(mockOrder);
         when(orderMapper.toResponse(mockOrder)).thenReturn(mockOrderResponse);
 
         // When & Then
-        mockMvc.perform(put("/api/v1/orders/{orderId}/process", orderId))
+        mockMvc.perform(put("/api/v1/orders/{orderId}/pending", orderId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(mockOrderResponse.id()));
     }
