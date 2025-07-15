@@ -191,11 +191,14 @@ O campo `version` implementa o controle de concorrência otimista (optimistic lo
 
 ---
 
-## 📊 Observabilidade
+## 📊 Métricas e Observabilidade
 
-- Health check: `/actuator/health`
-- Métricas: `/actuator/metrics`
-- Logs estruturados disponíveis via padrão SLF4J/Logback
+- **Prometheus**: Métricas expostas automaticamente no endpoint:
+  - `GET /actuator/prometheus`
+
+Exemplo de uso:
+
+Acesse http://localhost:8080/actuator/prometheus para visualizar as métricas da aplicação e integrar com Prometheus/Grafana.
 
 ---
 
