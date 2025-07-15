@@ -12,6 +12,7 @@ import com.seguradora.msorder.core.port.in.GetOrderUseCase;
 import com.seguradora.msorder.core.port.in.ListOrdersUseCase;
 import com.seguradora.msorder.core.port.in.UpdateOrderStatusUseCase;
 import jakarta.validation.Valid;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -89,6 +90,7 @@ public class OrderController {
     }
 
     @PutMapping("/{orderId}/approve")
+    @CacheEvict(value = "orders", key = "#orderId")
     public ResponseEntity<OrderResponse> approveOrder(@PathVariable String orderId) {
         var command = new UpdateOrderStatusUseCase.ApproveOrderCommand(OrderId.of(orderId));
         Order order = updateOrderStatusUseCase.approveOrder(command);
@@ -97,6 +99,7 @@ public class OrderController {
     }
 
     @PutMapping("/{orderId}/reject")
+    @CacheEvict(value = "orders", key = "#orderId")
     public ResponseEntity<OrderResponse> rejectOrder(@PathVariable String orderId) {
         var command = new UpdateOrderStatusUseCase.RejectOrderCommand(OrderId.of(orderId));
         Order order = updateOrderStatusUseCase.rejectOrder(command);
@@ -105,6 +108,7 @@ public class OrderController {
     }
 
     @PutMapping("/{orderId}/cancel")
+    @CacheEvict(value = "orders", key = "#orderId")
     public ResponseEntity<OrderResponse> cancelOrder(@PathVariable String orderId) {
         var command = new UpdateOrderStatusUseCase.CancelOrderCommand(OrderId.of(orderId));
         Order order = updateOrderStatusUseCase.cancelOrder(command);
@@ -113,6 +117,7 @@ public class OrderController {
     }
 
     @PutMapping("/{orderId}/pending")
+    @CacheEvict(value = "orders", key = "#orderId")
     public ResponseEntity<OrderResponse> pendingOrder(@PathVariable String orderId) {
         var command = new UpdateOrderStatusUseCase.PendingOrderCommand(OrderId.of(orderId));
         Order order = updateOrderStatusUseCase.pendingOrder(command);
