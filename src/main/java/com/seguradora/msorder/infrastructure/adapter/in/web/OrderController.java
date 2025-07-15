@@ -119,12 +119,4 @@ public class OrderController {
         OrderResponse response = orderMapper.toResponse(order);
         return ResponseEntity.ok(response);
     }
-
-    @PutMapping("/{orderId}/complete")
-    public ResponseEntity<OrderResponse> completeOrder(@PathVariable String orderId) {
-        var command = new UpdateOrderStatusUseCase.CompleteOrderCommand(OrderId.of(orderId));
-        Order order = updateOrderStatusUseCase.completeOrder(command);
-        OrderResponse response = orderMapper.toResponse(order);
-        return ResponseEntity.ok(response);
-    }
 }

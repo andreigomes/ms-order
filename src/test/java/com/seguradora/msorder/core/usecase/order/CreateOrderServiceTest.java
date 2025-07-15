@@ -8,7 +8,6 @@ import com.seguradora.msorder.core.port.out.FraudAnalysisPort;
 import com.seguradora.msorder.core.port.out.OrderEventPublisherPort;
 import com.seguradora.msorder.core.port.out.OrderRepositoryPort;
 import com.seguradora.msorder.infrastructure.adapter.out.external.dto.FraudAnalysisRequest;
-import com.seguradora.msorder.infrastructure.adapter.out.messaging.simulator.ExternalServicesSimulatorInterface;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,6 +18,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -36,17 +36,18 @@ class CreateOrderServiceTest {
     private FraudAnalysisPort fraudAnalysisPort;
 
     @Mock
-    private ExternalServicesSimulatorInterface externalServicesSimulator;
-
-    @Mock
-    private InsuranceAmountValidator insuranceAmountValidator;
+    private InsuranceAmountValidator amountValidator;
 
     private CreateOrderService createOrderService;
 
     @BeforeEach
     void setUp() {
-        createOrderService = new CreateOrderService(orderRepository, eventPublisher, fraudAnalysisPort,
-                                                   insuranceAmountValidator, externalServicesSimulator);
+        createOrderService = new CreateOrderService(
+            orderRepository,
+            eventPublisher,
+            fraudAnalysisPort,
+            amountValidator
+        );
     }
 
     @Test
@@ -72,7 +73,7 @@ class CreateOrderServiceTest {
 
         when(orderRepository.save(any(Order.class))).thenReturn(mockOrder);
         when(fraudAnalysisPort.analyzeRisk(any(FraudAnalysisRequest.class))).thenReturn("PREFERENTIAL");
-        when(insuranceAmountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class)))
+        when(amountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class)))
                 .thenReturn(true);
 
         // When
@@ -90,7 +91,6 @@ class CreateOrderServiceTest {
         verify(eventPublisher, times(1)).publishOrderCreated(any(Order.class));
         verify(eventPublisher, times(1)).publishOrderValidated(any(Order.class));
         verify(eventPublisher, times(1)).publishOrderPending(any(Order.class));
-        verify(externalServicesSimulator, times(1)).triggerExternalServices(any(Order.class));
     }
 
     @Test
@@ -116,7 +116,7 @@ class CreateOrderServiceTest {
 
         when(orderRepository.save(any(Order.class))).thenReturn(mockOrder);
         when(fraudAnalysisPort.analyzeRisk(any(FraudAnalysisRequest.class))).thenReturn("HIGH_RISK");
-        when(insuranceAmountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class)))
+        when(amountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class)))
                 .thenReturn(true);
 
         // When
@@ -130,7 +130,6 @@ class CreateOrderServiceTest {
         verify(eventPublisher, times(1)).publishOrderCreated(any(Order.class));
         verify(eventPublisher, times(1)).publishOrderValidated(any(Order.class));
         verify(eventPublisher, times(1)).publishOrderPending(any(Order.class));
-        verify(externalServicesSimulator, times(1)).triggerExternalServices(any(Order.class));
     }
 
     @Test
@@ -156,7 +155,7 @@ class CreateOrderServiceTest {
 
         when(orderRepository.save(any(Order.class))).thenReturn(mockOrder);
         when(fraudAnalysisPort.analyzeRisk(any(FraudAnalysisRequest.class))).thenReturn("HIGH_RISK");
-        when(insuranceAmountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class)))
+        when(amountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class)))
                 .thenReturn(false);
 
         // When
@@ -169,7 +168,6 @@ class CreateOrderServiceTest {
         verify(orderRepository, atLeastOnce()).save(any(Order.class));
         verify(eventPublisher, times(1)).publishOrderCreated(any(Order.class));
         verify(eventPublisher, times(1)).publishOrderRejected(any(Order.class));
-        verify(externalServicesSimulator, never()).triggerExternalServices(any(Order.class));
     }
 
     @Test
@@ -196,7 +194,7 @@ class CreateOrderServiceTest {
         when(orderRepository.save(any(Order.class))).thenReturn(mockOrder);
         when(fraudAnalysisPort.analyzeRisk(any(FraudAnalysisRequest.class)))
                 .thenThrow(new RuntimeException("API failure"));
-        when(insuranceAmountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class)))
+        when(amountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class)))
                 .thenReturn(true);
 
         // When
@@ -210,7 +208,6 @@ class CreateOrderServiceTest {
         verify(eventPublisher, times(1)).publishOrderCreated(any(Order.class));
         verify(eventPublisher, times(1)).publishOrderValidated(any(Order.class));
         verify(eventPublisher, times(1)).publishOrderPending(any(Order.class));
-        verify(externalServicesSimulator, times(1)).triggerExternalServices(any(Order.class));
     }
 
     @Test
@@ -236,7 +233,7 @@ class CreateOrderServiceTest {
 
         when(orderRepository.save(any(Order.class))).thenReturn(mockOrder);
         when(fraudAnalysisPort.analyzeRisk(any(FraudAnalysisRequest.class))).thenReturn("REGULAR");
-        when(insuranceAmountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class)))
+        when(amountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class)))
                 .thenReturn(true);
 
         // When
@@ -253,7 +250,6 @@ class CreateOrderServiceTest {
         verify(eventPublisher, times(1)).publishOrderCreated(any(Order.class));
         verify(eventPublisher, times(1)).publishOrderValidated(any(Order.class));
         verify(eventPublisher, times(1)).publishOrderPending(any(Order.class));
-        verify(externalServicesSimulator, times(1)).triggerExternalServices(any(Order.class));
     }
 
     @Test
@@ -279,7 +275,7 @@ class CreateOrderServiceTest {
 
         when(orderRepository.save(any(Order.class))).thenReturn(mockOrder);
         when(fraudAnalysisPort.analyzeRisk(any(FraudAnalysisRequest.class))).thenReturn("NO_INFO");
-        when(insuranceAmountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class)))
+        when(amountValidator.isAmountValid(any(RiskLevel.class), any(InsuranceType.class), any(BigDecimal.class)))
                 .thenReturn(false);
 
         // When
@@ -292,6 +288,5 @@ class CreateOrderServiceTest {
         verify(orderRepository, atLeastOnce()).save(any(Order.class));
         verify(eventPublisher, times(1)).publishOrderCreated(any(Order.class));
         verify(eventPublisher, times(1)).publishOrderRejected(any(Order.class));
-        verify(externalServicesSimulator, never()).triggerExternalServices(any(Order.class));
     }
 }

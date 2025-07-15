@@ -3,7 +3,6 @@ package com.seguradora.msorder.application.mapper;
 import com.seguradora.msorder.application.dto.CreateOrderRequest;
 import com.seguradora.msorder.application.dto.OrderResponse;
 import com.seguradora.msorder.core.domain.entity.Order;
-import com.seguradora.msorder.core.domain.valueobject.*;
 import com.seguradora.msorder.core.port.in.CreateOrderUseCase.CreateOrderCommand;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

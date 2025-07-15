@@ -8,7 +8,6 @@ import com.seguradora.msorder.core.port.out.OrderEventPublisherPort;
 import com.seguradora.msorder.core.port.out.FraudAnalysisPort;
 import com.seguradora.msorder.core.port.out.OrderRepositoryPort;
 import com.seguradora.msorder.infrastructure.adapter.out.external.dto.FraudAnalysisRequest;
-import com.seguradora.msorder.infrastructure.adapter.out.messaging.simulator.ExternalServicesSimulatorInterface;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -29,18 +28,15 @@ public class CreateOrderService implements CreateOrderUseCase {
     private final OrderEventPublisherPort eventPublisher;
     private final FraudAnalysisPort fraudAnalysisPort;
     private final InsuranceAmountValidator amountValidator;
-    private final ExternalServicesSimulatorInterface externalServicesSimulator;
 
     public CreateOrderService(OrderRepositoryPort orderRepository,
                              OrderEventPublisherPort eventPublisher,
                              FraudAnalysisPort fraudAnalysisPort,
-                             InsuranceAmountValidator amountValidator,
-                             ExternalServicesSimulatorInterface externalServicesSimulator) {
+                             InsuranceAmountValidator amountValidator) {
         this.orderRepository = orderRepository;
         this.eventPublisher = eventPublisher;
         this.fraudAnalysisPort = fraudAnalysisPort;
         this.amountValidator = amountValidator;
-        this.externalServicesSimulator = externalServicesSimulator;
     }
 
     @Override
@@ -206,7 +202,6 @@ public class CreateOrderService implements CreateOrderUseCase {
     @Async("taskExecutor")
     private void triggerExternalServicesAsync(Order order) {
         try {
-            externalServicesSimulator.triggerExternalServices(order);
             logger.info("Serviços externos disparados para pedido: {}", order.getId().getValue());
         } catch (Exception e) {
             logger.error("Erro ao disparar serviços externos para pedido: {}", order.getId().getValue(), e);

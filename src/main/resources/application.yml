@@ -29,14 +29,6 @@ app:
   fraud-api:
     url: http://fraud-api-mock:8080/api/v1
 
-  # Configurações do Simulador de Serviços Externos
-  simulator:
-    enabled: false  # Habilita/desabilita o simulador
-    fixed-payment-status: null      # APPROVED ou REJECTED (null = usar lógica aleatória)
-    fixed-subscription-status: null # APPROVED ou REJECTED (null = usar lógica aleatória)
-    payment-delay-seconds: 2        # Delay em segundos para simular processamento de pagamento
-    subscription-delay-seconds: 3   # Delay em segundos para simular análise de subscrição
-
 management:
   endpoints:
     web:

@@ -28,14 +28,8 @@ public interface UpdateOrderStatusUseCase {
      */
     Order processOrder(ProcessOrderCommand command);
 
-    /**
-     * Completa um pedido
-     */
-    Order completeOrder(CompleteOrderCommand command);
-
     record ApproveOrderCommand(OrderId orderId) {}
     record RejectOrderCommand(OrderId orderId) {}
     record CancelOrderCommand(OrderId orderId) {}
     record ProcessOrderCommand(OrderId orderId) {}
-    record CompleteOrderCommand(OrderId orderId) {}
 }
