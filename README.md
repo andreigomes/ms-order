@@ -245,3 +245,29 @@ Acesse http://localhost:8080/actuator/prometheus para visualizar as métricas da
 ## 🤝 Contato
 
 - Contato: andrei
+
+---
+
+## ▶️ Como subir a aplicação localmente
+
+1. **Pré-requisitos:**
+   - Docker instalado e rodando
+   - Java 17+
+   - Maven 3.8+
+
+2. **Suba as dependências (PostgreSQL, Kafka, Wiremock, Prometheus):**
+
+```sh
+docker-compose up -d
+```
+
+3. **Execute a aplicação no modo local:**
+
+```sh
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+```
+Ou, se preferir, rode pelo IntelliJ/Eclipse com o perfil `local` ativo.
+
+4. **Acesse as APIs:**
+   - API REST: http://localhost:8080/api/v1/orders
+   - Prometheus: http://localhost:8080/actuator/prometheus
