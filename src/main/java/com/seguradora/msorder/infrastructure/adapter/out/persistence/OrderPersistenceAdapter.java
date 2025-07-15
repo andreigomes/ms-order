@@ -36,7 +36,7 @@ public class OrderPersistenceAdapter implements OrderRepositoryPort {
 
     @Override
     public Optional<Order> findById(OrderId orderId) {
-        return jpaRepository.findById(orderId.getValue())
+        return jpaRepository.findById(orderId.getValue().toString())
             .map(mapper::restoreDomain);
     }
 
@@ -66,11 +66,11 @@ public class OrderPersistenceAdapter implements OrderRepositoryPort {
 
     @Override
     public void deleteById(OrderId orderId) {
-        jpaRepository.deleteById(orderId.getValue());
+        jpaRepository.deleteById(orderId.getValue().toString());
     }
 
     @Override
     public boolean existsById(OrderId orderId) {
-        return jpaRepository.existsById(orderId.getValue());
+        return jpaRepository.existsById(orderId.getValue().toString());
     }
 }

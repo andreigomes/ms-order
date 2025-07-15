@@ -81,30 +81,30 @@ class OrderPersistenceAdapterTest {
     @Test
     void shouldFindOrderByIdSuccessfully() {
         // Given
-        when(jpaRepository.findById(orderId.getValue())).thenReturn(Optional.of(mockJpaEntity));
+        when(jpaRepository.findById(orderId.getValue().toString())).thenReturn(Optional.of(mockJpaEntity));
         when(mapper.restoreDomain(mockJpaEntity)).thenReturn(mockOrder);
 
         // When
-        Optional<Order> foundOrder = orderPersistenceAdapter.findById(orderId);
+        Optional<Order> result = orderPersistenceAdapter.findById(orderId);
 
         // Then
-        assertThat(foundOrder).isPresent();
-        assertThat(foundOrder.get()).isEqualTo(mockOrder);
-        verify(jpaRepository).findById(orderId.getValue());
+        assertThat(result).isPresent();
+        assertThat(result.get()).isEqualTo(mockOrder);
+        verify(jpaRepository).findById(orderId.getValue().toString());
         verify(mapper).restoreDomain(mockJpaEntity);
     }
 
     @Test
-    void shouldReturnEmptyWhenOrderNotFoundById() {
+    void shouldReturnEmptyWhenOrderNotFound() {
         // Given
-        when(jpaRepository.findById(orderId.getValue())).thenReturn(Optional.empty());
+        when(jpaRepository.findById(orderId.getValue().toString())).thenReturn(Optional.empty());
 
         // When
-        Optional<Order> foundOrder = orderPersistenceAdapter.findById(orderId);
+        Optional<Order> result = orderPersistenceAdapter.findById(orderId);
 
         // Then
-        assertThat(foundOrder).isEmpty();
-        verify(jpaRepository).findById(orderId.getValue());
+        assertThat(result).isEmpty();
+        verify(jpaRepository).findById(orderId.getValue().toString());
         verify(mapper, never()).restoreDomain(any());
     }
 
@@ -209,32 +209,32 @@ class OrderPersistenceAdapterTest {
         orderPersistenceAdapter.deleteById(orderId);
 
         // Then
-        verify(jpaRepository).deleteById(orderId.getValue());
+        verify(jpaRepository).deleteById(orderId.getValue().toString());
     }
 
     @Test
     void shouldCheckIfOrderExistsById() {
         // Given
-        when(jpaRepository.existsById(orderId.getValue())).thenReturn(true);
+        when(jpaRepository.existsById(orderId.getValue().toString())).thenReturn(true);
 
         // When
         boolean exists = orderPersistenceAdapter.existsById(orderId);
 
         // Then
         assertThat(exists).isTrue();
-        verify(jpaRepository).existsById(orderId.getValue());
+        verify(jpaRepository).existsById(orderId.getValue().toString());
     }
 
     @Test
     void shouldReturnFalseWhenOrderDoesNotExist() {
         // Given
-        when(jpaRepository.existsById(orderId.getValue())).thenReturn(false);
+        when(jpaRepository.existsById(orderId.getValue().toString())).thenReturn(false);
 
         // When
         boolean exists = orderPersistenceAdapter.existsById(orderId);
 
         // Then
         assertThat(exists).isFalse();
-        verify(jpaRepository).existsById(orderId.getValue());
+        verify(jpaRepository).existsById(orderId.getValue().toString());
     }
 }

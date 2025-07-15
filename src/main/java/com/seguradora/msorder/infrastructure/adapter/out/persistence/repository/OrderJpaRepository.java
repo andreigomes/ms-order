@@ -6,13 +6,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Repositório JPA para entidade Order
  */
 @Repository
-public interface OrderJpaRepository extends JpaRepository<OrderJpaEntity, UUID> {
+public interface OrderJpaRepository extends JpaRepository<OrderJpaEntity, String> {
 
     List<OrderJpaEntity> findByCustomerId(String customerId);
 

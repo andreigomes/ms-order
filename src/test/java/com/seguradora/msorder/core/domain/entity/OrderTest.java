@@ -76,7 +76,7 @@ class OrderTest {
         // When
         Order order = Order.restore(id, customerId, productId, category, salesChannel, paymentMethod,
                                    totalMonthlyPremiumAmount, insuredAmount, coverages, assistances, status,
-                                   description, createdAt, updatedAt, finishedAt, history, paymentApproved, subscriptionApproved);
+                                   description, createdAt, updatedAt, finishedAt, history, paymentApproved, subscriptionApproved, 0L);
 
         // Then
         assertEquals(id, order.getId());
@@ -105,7 +105,7 @@ class OrderTest {
                                    Coverages.of(Map.of("collision", new BigDecimal("1200.00"))),
                                    Assistances.of(List.of("24h assistance")), OrderStatus.RECEIVED,
                                    "Test", LocalDateTime.now(), LocalDateTime.now(), null,
-                                   null, "PENDING", "PENDING"); // history null
+                                   null, "PENDING", "PENDING", 0L); // history null
 
         // Then
         assertNotNull(order.getHistory());
@@ -668,7 +668,7 @@ class OrderTest {
                                     order1.getCoverages(), order1.getAssistances(), order1.getStatus(),
                                     order1.getDescription(), order1.getCreatedAt(), order1.getUpdatedAt(),
                                     order1.getFinishedAt(), order1.getHistory(), order1.getPaymentApproved(),
-                                    order1.getSubscriptionApproved());
+                                    order1.getSubscriptionApproved(), 0L);
 
         // Then
         assertEquals(order1, order2);

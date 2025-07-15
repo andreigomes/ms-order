@@ -62,26 +62,26 @@ services:
       - seguradora-network
 
   # Application
-  ms-order:
-    build: .
-    container_name: seguradora-ms-order
-    depends_on:
-      - postgres
-      - kafka
-      - fraud-api-mock
-    ports:
-      - "8080:8080"
-    environment:
-      SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/seguradora_orders
-      SPRING_DATASOURCE_USERNAME: seguradora_user
-      SPRING_DATASOURCE_PASSWORD: seguradora_pass
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      FRAUD_API_BASE_URL: http://fraud-api-mock:8080
-      # Simulador de serviços externos habilitado
-      APP_SIMULATOR_ENABLED: 'true'
-    networks:
-      - seguradora-network
+  # ms-order:
+  #   build: .
+  #   container_name: seguradora-ms-order
+  #   depends_on:
+  #     - postgres
+  #     - kafka
+  #     - fraud-api-mock
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     SPRING_PROFILES_ACTIVE: docker
+  #     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/seguradora_orders
+  #     SPRING_DATASOURCE_USERNAME: seguradora_user
+  #     SPRING_DATASOURCE_PASSWORD: seguradora_pass
+  #     SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  #     FRAUD_API_BASE_URL: http://fraud-api-mock:8080
+  #     # Simulador de serviços externos habilitado
+  #     APP_SIMULATOR_ENABLED: 'true'
+  #   networks:
+  #     - seguradora-network
 
 volumes:
   postgres_data:

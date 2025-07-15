@@ -21,7 +21,7 @@ public class GetOrderService implements GetOrderUseCase {
     }
 
     @Override
-    @Cacheable(value = "orders", key = "#query.orderId().value", unless = "#result == null")
+    @Cacheable(value = "orders", key = "#query.orderId().getValue().toString()", unless = "#result == null")
     public Order getOrderById(GetOrderQuery query) {
         return orderRepository.findById(query.orderId())
             .orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + query.orderId()));

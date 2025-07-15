@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Profile;
 
 /**
  * Configuração de teste que mocka componentes para evitar problemas de conexão
+ * Use esta configuração para testes que não precisam de Kafka real
  */
 @TestConfiguration
 @Profile("test")

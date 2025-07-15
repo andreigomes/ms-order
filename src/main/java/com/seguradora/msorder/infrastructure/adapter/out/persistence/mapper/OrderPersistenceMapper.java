@@ -54,7 +54,8 @@ public interface OrderPersistenceMapper {
             entity.getFinishedAt(),
             OrderHistory.fromJson(entity.getHistory()),
             entity.getPaymentApproved(),
-            entity.getSubscriptionApproved()
+            entity.getSubscriptionApproved(),
+            entity.getVersion()
         );
     }
 

@@ -83,6 +83,11 @@ public class OrderJpaEntity {
     @Column(name = "subscription_approved")
     private String subscriptionApproved;
 
+    // Campo para controle de concorrência (lock otimista)
+    @Version
+    @Column(name = "version")
+    private Long version;
+
     // Construtor padrão
     public OrderJpaEntity() {}
 
@@ -94,7 +99,7 @@ public class OrderJpaEntity {
                          OrderStatus status, String description, LocalDateTime createdAt,
                          LocalDateTime updatedAt, LocalDateTime finishedAt,
                          List<Map<String, Object>> history, String paymentApproved,
-                         String subscriptionApproved) {
+                         String subscriptionApproved, Long version) {
         this.id = id;
         this.customerId = customerId;
         this.productId = productId;
@@ -113,6 +118,7 @@ public class OrderJpaEntity {
         this.history = history;
         this.paymentApproved = paymentApproved;
         this.subscriptionApproved = subscriptionApproved;
+        this.version = version;
     }
 
     // Getters e Setters
@@ -169,4 +175,7 @@ public class OrderJpaEntity {
 
     public String getSubscriptionApproved() { return subscriptionApproved; }
     public void setSubscriptionApproved(String subscriptionApproved) { this.subscriptionApproved = subscriptionApproved; }
+
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 }

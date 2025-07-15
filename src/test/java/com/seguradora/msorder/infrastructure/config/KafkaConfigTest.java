@@ -12,6 +12,8 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.Map;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,7 +36,7 @@ class KafkaConfigTest {
             .containsEntry(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092")
             .containsEntry(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
             .containsEntry(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class)
-            .containsEntry(ProducerConfig.ACKS_CONFIG, "1")
+            .containsEntry(ProducerConfig.ACKS_CONFIG, "all") // Corrigido de "1" para "all"
             .containsEntry(ProducerConfig.RETRIES_CONFIG, 3)
             .containsEntry(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true)
             .containsEntry(ProducerConfig.BATCH_SIZE_CONFIG, 16384)
@@ -72,7 +74,7 @@ class KafkaConfigTest {
             .containsEntry(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092")
             .containsEntry(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
             .containsEntry(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
-            .containsEntry(ProducerConfig.ACKS_CONFIG, "1")
+            .containsEntry(ProducerConfig.ACKS_CONFIG, "all")
             .containsEntry(ProducerConfig.RETRIES_CONFIG, 3)
             .containsEntry(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
     }
@@ -92,15 +94,16 @@ class KafkaConfigTest {
 
     @Test
     void shouldUseDefaultBootstrapServersWhenNotProvided() {
-        // Given - Definir explicitamente o valor padrão para simular a configuração
-        ReflectionTestUtils.setField(kafkaConfig, "bootstrapServers", "localhost:9092");
+        // Given - Criar uma nova instância com configuração padrão
+        KafkaConfig defaultKafkaConfig = new KafkaConfig();
+        ReflectionTestUtils.setField(defaultKafkaConfig, "bootstrapServers", "localhost:9092");
 
         // When
-        ProducerFactory<String, OrderEvent> producerFactory = kafkaConfig.producerFactory();
+        ProducerFactory<String, OrderEvent> producerFactory = defaultKafkaConfig.producerFactory();
 
         // Then
         assertThat(producerFactory).isNotNull();
-        assertThat(producerFactory.getConfigurationProperties())
-            .containsEntry(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        Map<String, Object> configs = producerFactory.getConfigurationProperties();
+        assertThat(configs).containsEntry(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
     }
 }

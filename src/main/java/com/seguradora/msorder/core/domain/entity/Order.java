@@ -28,6 +28,7 @@ public class Order {
     private LocalDateTime updatedAt;
     private LocalDateTime finishedAt;
     private OrderHistory history;
+    private Long version;
 
     // Campos para coordenação de eventos
     private String paymentApproved = "PENDING"; // PENDING, APPROVED, REJECTED
@@ -69,7 +70,7 @@ public class Order {
                                BigDecimal totalMonthlyPremiumAmount, BigDecimal insuredAmount,
                                Coverages coverages, Assistances assistances, OrderStatus status,
                                String description, LocalDateTime createdAt, LocalDateTime updatedAt,
-                               LocalDateTime finishedAt, OrderHistory history, String paymentApproved, String subscriptionApproved) {
+                               LocalDateTime finishedAt, OrderHistory history, String paymentApproved, String subscriptionApproved, Long version) {
         Order order = new Order();
         order.id = id;
         order.customerId = customerId;
@@ -89,7 +90,7 @@ public class Order {
         order.history = history != null ? history : OrderHistory.empty();
         order.paymentApproved = paymentApproved;
         order.subscriptionApproved = subscriptionApproved;
-
+        order.version = version;
         return order;
     }
 
@@ -217,7 +218,7 @@ public class Order {
 
         this.paymentApproved = "APPROVED";
         this.updatedAt = LocalDateTime.now();
-        this.history = this.history.addEntry(status, status, "Pagamento aprovado");
+        // Não adiciona ao histórico - apenas marca como aprovado
 
         return canBeFinalized();
     }
@@ -244,7 +245,7 @@ public class Order {
 
         this.subscriptionApproved = "APPROVED";
         this.updatedAt = LocalDateTime.now();
-        this.history = this.history.addEntry(status, status, "Subscrição aprovada");
+        // Não adiciona ao histórico - apenas marca como aprovado
 
         return canBeFinalized();
     }
@@ -305,6 +306,9 @@ public class Order {
     public OrderHistory getHistory() { return history; }
     public String getPaymentApproved() { return paymentApproved; }
     public String getSubscriptionApproved() { return subscriptionApproved; }
+    public Long getVersion() {
+        return version;
+    }
 
     @Override
     public boolean equals(Object o) {

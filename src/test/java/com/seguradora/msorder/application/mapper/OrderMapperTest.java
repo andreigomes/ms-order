@@ -169,7 +169,8 @@ class OrderMapperTest {
             null,
             OrderHistory.empty(),
             "PENDING",
-            "PENDING"
+            "PENDING",
+            null
         );
 
         // When
@@ -203,7 +204,8 @@ class OrderMapperTest {
             null,
             OrderHistory.empty(),
             "PENDING",
-            "PENDING"
+            "PENDING",
+            null
         );
 
         // When
@@ -238,7 +240,8 @@ class OrderMapperTest {
             LocalDateTime.now(),
             null, // OrderHistory COMPLETAMENTE NULO - testa order.getHistory() == null
             "APPROVED",
-            "APPROVED"
+            "APPROVED",
+            null
         );
 
         // When
@@ -273,7 +276,8 @@ class OrderMapperTest {
             LocalDateTime.now(),
             emptyHistory, // Histórico existe mas sem entradas
             "REJECTED",
-            "REJECTED"
+            "REJECTED",
+            null
         );
 
         // When
@@ -310,7 +314,8 @@ class OrderMapperTest {
             null,
             null, // History NULL - força o primeiro lado da condição OR (order.getHistory() == null)
             "PENDING",
-            "PENDING"
+            "PENDING",
+            null
         );
 
         // When
@@ -341,7 +346,8 @@ class OrderMapperTest {
             null,
             emptyHistory, // History existe mas getEntries() retorna lista vazia
             "PENDING",
-            "PENDING"
+            "PENDING",
+            null
         );
 
         // When
@@ -376,7 +382,8 @@ class OrderMapperTest {
             LocalDateTime.now(),
             null, // Força order.getHistory() == null
             "APPROVED",
-            "APPROVED"
+            "APPROVED",
+            null
         );
 
         // When - Chama diretamente o método mapHistory
@@ -402,10 +409,11 @@ class OrderMapperTest {
             "Direct test empty history",
             LocalDateTime.now(),
             LocalDateTime.now(),
-            null,
-            OrderHistory.empty(), // História válida mas sem entradas
+            LocalDateTime.now(),
+            OrderHistory.empty(),
             "PENDING",
-            "PENDING"
+            "PENDING",
+            null
         );
 
         // When - Chama diretamente o método mapHistory
@@ -438,7 +446,8 @@ class OrderMapperTest {
             finishedTime,
             OrderHistory.empty(),
             "APPROVED",
-            "APPROVED"
+            "APPROVED",
+            null
         );
 
         // When
@@ -552,7 +561,8 @@ class OrderMapperTest {
             null,
             null, // History nulo
             "PENDING",
-            "PENDING"
+            "PENDING",
+            null
         );
 
         // When
@@ -588,7 +598,8 @@ class OrderMapperTest {
             null,
             emptyHistory, // História com lista vazia
             "APPROVED",
-            "APPROVED"
+            "APPROVED",
+            null
         );
 
         // When
@@ -599,5 +610,38 @@ class OrderMapperTest {
         assertThat(response.history()).isEmpty(); // Deve retornar lista vazia
         assertThat(response.customerId()).isEqualTo("101112");
         assertThat(response.status()).isEqualTo(OrderStatus.VALIDATED);
+    }
+
+    @Test
+    void shouldReturnEmptyHistoryListWhenOrderHistoryIsNull() {
+        // Given
+        Order order = Order.restore(
+            OrderId.generate(),
+            new CustomerId("789"),
+            ProductId.of("PROD003"),
+            InsuranceType.LIFE,
+            SalesChannel.PHONE,
+            PaymentMethod.BOLETO,
+            new BigDecimal("200.00"),
+            new BigDecimal("20000.00"),
+            Coverages.of(Map.of("life", new BigDecimal("20000.00"))),
+            Assistances.of(List.of("emergency")),
+            OrderStatus.PENDING,
+            "Test with null history",
+            LocalDateTime.now(),
+            LocalDateTime.now(),
+            null,
+            null, // OrderHistory nulo
+            "PENDING",
+            "PENDING",
+            null
+        );
+
+        // When
+        OrderResponse response = mapper.toResponse(order);
+
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.history()).isEmpty();
     }
 }

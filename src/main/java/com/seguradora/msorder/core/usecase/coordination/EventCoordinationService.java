@@ -2,16 +2,21 @@ package com.seguradora.msorder.core.usecase.coordination;
 
 import com.seguradora.msorder.core.domain.entity.Order;
 import com.seguradora.msorder.core.domain.valueobject.OrderId;
+import com.seguradora.msorder.core.domain.valueobject.OrderStatus;
 import com.seguradora.msorder.core.port.out.OrderRepositoryPort;
 import com.seguradora.msorder.core.port.out.OrderEventPublisherPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Serviço responsável por coordenar os eventos de pagamento e subscrição
- * Só finaliza o pedido quando ambos estiverem aprovados
+ * Serviço responsável por coordenar eventos de pagamento e subscrição
+ * Implementa controle de concorrência com retry para evitar race conditions
  */
 @Service
 @Transactional
@@ -29,89 +34,143 @@ public class EventCoordinationService {
     }
 
     /**
-     * Processa aprovação de pagamento e verifica se pode finalizar o pedido
+     * Processa aprovação de pagamento com retry em caso de concorrência
      */
+    @Retryable(value = {OptimisticLockingFailureException.class},
+               maxAttempts = 3,
+               backoff = @Backoff(delay = 100, multiplier = 2))
+    @CacheEvict(value = "orders", key = "#orderId")
     public void processPaymentApproval(String orderId) {
-        logger.info("Processando aprovação de pagamento para pedido: {}", orderId);
+        try {
+            logger.info("Processando aprovação de pagamento para pedido: {}", orderId);
 
-        Order order = findOrderById(orderId);
-        boolean canFinalize = order.approvePayment();
+            OrderId orderIdVO = OrderId.of(orderId);
+            Order order = orderRepository.findById(orderIdVO)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
 
-        orderRepository.save(order);
+            // Aprovar pagamento e verificar se pode finalizar
+            boolean canFinalize = order.approvePayment();
+            orderRepository.save(order);
 
-        if (canFinalize) {
-            finalizeOrder(order);
-        } else {
-            logger.info("Pagamento aprovado para pedido {}, aguardando aprovação de subscrição", orderId);
+            // Se pode finalizar (ambos aprovados), finalizar o pedido
+            if (canFinalize) {
+                order.finalizeApproval();
+                orderRepository.save(order);
+                eventPublisher.publishOrderApproved(order);
+                logger.info("Pedido {} finalizado com sucesso", orderId);
+            } else {
+                logger.info("Pagamento aprovado para pedido {}, aguardando aprovação de subscrição", orderId);
+            }
+
+        } catch (OptimisticLockingFailureException e) {
+            logger.warn("Conflito de concorrência ao processar pagamento para pedido: {}, tentando novamente...", orderId);
+            throw e; // Re-throw para trigger do retry
+        } catch (Exception e) {
+            logger.error("Erro ao processar aprovação de pagamento para pedido: {}", orderId, e);
+            throw e;
         }
     }
 
     /**
-     * Processa rejeição de pagamento
+     * Processa rejeição de pagamento com retry em caso de concorrência
      */
+    @Retryable(value = {OptimisticLockingFailureException.class},
+               maxAttempts = 3,
+               backoff = @Backoff(delay = 100, multiplier = 2))
+    @CacheEvict(value = "orders", key = "#orderId")
     public void processPaymentRejection(String orderId, String reason) {
-        logger.info("Processando rejeição de pagamento para pedido: {} - Motivo: {}", orderId, reason);
+        try {
+            logger.info("Processando rejeição de pagamento para pedido: {}", orderId);
 
-        Order order = findOrderById(orderId);
-        order.rejectPayment(reason);
+            OrderId orderIdVO = OrderId.of(orderId);
+            Order order = orderRepository.findById(orderIdVO)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
 
-        orderRepository.save(order);
-        eventPublisher.publishOrderRejected(order);
+            // Rejeitar pagamento
+            order.rejectPayment(reason != null ? reason : "Payment rejected");
+            orderRepository.save(order);
 
-        logger.info("Pedido {} rejeitado devido a pagamento negado", orderId);
-    }
+            // Publicar evento de rejeição
+            eventPublisher.publishOrderRejected(order);
+            logger.info("Pedido {} rejeitado devido a pagamento rejeitado", orderId);
 
-    /**
-     * Processa aprovação de subscrição e verifica se pode finalizar o pedido
-     */
-    public void processSubscriptionApproval(String orderId) {
-        logger.info("Processando aprovação de subscrição para pedido: {}", orderId);
-
-        Order order = findOrderById(orderId);
-        boolean canFinalize = order.approveSubscription();
-
-        orderRepository.save(order);
-
-        if (canFinalize) {
-            finalizeOrder(order);
-        } else {
-            logger.info("Subscrição aprovada para pedido {}, aguardando aprovação de pagamento", orderId);
+        } catch (OptimisticLockingFailureException e) {
+            logger.warn("Conflito de concorrência ao rejeitar pagamento para pedido: {}, tentando novamente...", orderId);
+            throw e; // Re-throw para trigger do retry
+        } catch (Exception e) {
+            logger.error("Erro ao processar rejeição de pagamento para pedido: {}", orderId, e);
+            throw e;
         }
     }
 
     /**
-     * Processa rejeição de subscrição
+     * Processa aprovação de subscrição com retry em caso de concorrência
      */
+    @Retryable(value = {OptimisticLockingFailureException.class},
+               maxAttempts = 3,
+               backoff = @Backoff(delay = 100, multiplier = 2))
+    @CacheEvict(value = "orders", key = "#orderId")
+    public void processSubscriptionApproval(String orderId) {
+        try {
+            logger.info("Processando aprovação de subscrição para pedido: {}", orderId);
+
+            OrderId orderIdVO = OrderId.of(orderId);
+            Order order = orderRepository.findById(orderIdVO)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
+
+            // Aprovar subscrição e verificar se pode finalizar
+            boolean canFinalize = order.approveSubscription();
+            orderRepository.save(order);
+
+            // Se pode finalizar (ambos aprovados), finalizar o pedido
+            if (canFinalize) {
+                logger.info("Finalizando pedido {} - ambos pagamento e subscrição aprovados", orderId);
+                order.finalizeApproval();
+                orderRepository.save(order);
+                eventPublisher.publishOrderApproved(order);
+                logger.info("Pedido {} finalizado com sucesso", orderId);
+            } else {
+                logger.info("Subscrição aprovada para pedido {}, aguardando aprovação de pagamento", orderId);
+            }
+
+        } catch (OptimisticLockingFailureException e) {
+            logger.warn("Conflito de concorrência ao processar subscrição para pedido: {}, tentando novamente...", orderId);
+            throw e; // Re-throw para trigger do retry
+        } catch (Exception e) {
+            logger.error("Erro ao processar aprovação de subscrição para pedido: {}", orderId, e);
+            throw e;
+        }
+    }
+
+    /**
+     * Processa rejeição de subscrição com retry em caso de concorrência
+     */
+    @Retryable(value = {OptimisticLockingFailureException.class},
+               maxAttempts = 3,
+               backoff = @Backoff(delay = 100, multiplier = 2))
+    @CacheEvict(value = "orders", key = "#orderId")
     public void processSubscriptionRejection(String orderId, String reason) {
-        logger.info("Processando rejeição de subscrição para pedido: {} - Motivo: {}", orderId, reason);
+        try {
+            logger.info("Processando rejeição de subscrição para pedido: {}", orderId);
 
-        Order order = findOrderById(orderId);
-        order.rejectSubscription(reason);
+            OrderId orderIdVO = OrderId.of(orderId);
+            Order order = orderRepository.findById(orderIdVO)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
 
-        orderRepository.save(order);
-        eventPublisher.publishOrderRejected(order);
+            // Rejeitar subscrição
+            order.rejectSubscription(reason != null ? reason : "Subscription rejected");
+            orderRepository.save(order);
 
-        logger.info("Pedido {} rejeitado devido a subscrição negada", orderId);
-    }
+            // Publicar evento de rejeição
+            eventPublisher.publishOrderRejected(order);
+            logger.info("Pedido {} rejeitado devido a subscrição rejeitada", orderId);
 
-    /**
-     * Finaliza o pedido quando ambos pagamento e subscrição foram aprovados
-     */
-    private void finalizeOrder(Order order) {
-        logger.info("Finalizando pedido {} - ambos pagamento e subscrição aprovados", order.getId().getValue());
-
-        order.finalizeApproval();
-        orderRepository.save(order);
-        eventPublisher.publishOrderApproved(order);
-
-        logger.info("Pedido {} finalizado com sucesso", order.getId().getValue());
-    }
-
-    /**
-     * Busca pedido por ID e valida existência
-     */
-    private Order findOrderById(String orderId) {
-        return orderRepository.findById(OrderId.of(orderId))
-            .orElseThrow(() -> new IllegalArgumentException("Pedido não encontrado: " + orderId));
+        } catch (OptimisticLockingFailureException e) {
+            logger.warn("Conflito de concorrência ao rejeitar subscrição para pedido: {}, tentando novamente...", orderId);
+            throw e; // Re-throw para trigger do retry
+        } catch (Exception e) {
+            logger.error("Erro ao processar rejeição de subscrição para pedido: {}", orderId, e);
+            throw e;
+        }
     }
 }
