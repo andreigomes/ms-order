@@ -165,6 +165,40 @@ O campo `version` implementa o controle de concorrência otimista (optimistic lo
 
 ---
 
+## 🏛️ Clean Architecture
+
+O projeto segue os princípios da Clean Architecture, separando responsabilidades em camadas bem definidas:
+
+- **Domain (Domínio):**
+  - Contém entidades, value objects, regras de negócio e interfaces (ports) do domínio.
+  - Exemplo: `Order`, `OrderStatus`, `OrderRepositoryPort`, `OrderEventPublisherPort`.
+
+- **Application (Aplicação):**
+  - Casos de uso (use cases) que orquestram as regras de negócio e coordenam as operações entre domínio e infraestrutura.
+  - Exemplo: `CreateOrderService`, `UpdateOrderStatusUseCase`, `GetOrderService`.
+
+- **Infrastructure (Infraestrutura):**
+  - Implementações técnicas de persistência, mensageria, integrações externas, web, cache, etc.
+  - Exemplo: `OrderPersistenceAdapter`, `OrderEventPublisherAdapter`, `FraudAnalysisAdapter`, controllers REST, configurações de cache, métricas, tracing, etc.
+
+- **Adapters (Adaptadores):**
+  - Pontes entre a aplicação e o mundo externo (REST, Kafka, banco de dados, serviços externos).
+  - Exemplo: Controllers REST, Consumers/Producers Kafka, Adapters de persistência e integrações.
+
+### Benefícios
+- **Baixo acoplamento:** Domínio não depende de frameworks ou detalhes de infraestrutura.
+- **Alta testabilidade:** Casos de uso e domínio podem ser testados isoladamente.
+- **Facilidade de manutenção e evolução:** Mudanças em tecnologia ou integrações não afetam o núcleo do domínio.
+
+### Exemplo de Fluxo
+1. **Controller REST** recebe requisição e converte para DTO.
+2. **Mapper** converte DTO para entidade de domínio.
+3. **Use Case** executa lógica de negócio, consulta/adapta dados via ports.
+4. **Adapters** implementam ports para persistência, mensageria, etc.
+5. **Resposta** é convertida de entidade para DTO e retornada ao cliente.
+
+---
+
 ## 🛠️ Problemas Resolvidos
 - Concorrência em atualização de status (versionamento otimista)
 - Cache sincronizado com o banco (evict automático)
